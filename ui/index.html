@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pictago</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js" crossorigin></script>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #0f0f12;
+      --surface: #18181c;
+      --surface-hover: #1e1e24;
+      --border: #2a2a32;
+      --text: #e4e4e7;
+      --text-muted: #71717a;
+      --accent: #a78bfa;
+      --accent-hover: #c4b5fd;
+      --danger: #f87171;
+      --success: #34d399;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    #app { max-width: 720px; margin: 0 auto; padding: 1.5rem; min-height: 100vh; }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 600; margin: 0; letter-spacing: -0.02em; }
+    .user-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .user-badge .admin { color: var(--accent); font-weight: 500; }
+    .header-actions { display: flex; align-items: center; gap: 1rem; }
+    .logout-link { font-size: 0.875rem; color: var(--text-muted); text-decoration: none; }
+    .logout-link:hover { color: var(--accent); }
+    nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+    nav a {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      transition: color 0.15s, background 0.15s;
+    }
+    nav a:hover { color: var(--text); background: var(--surface-hover); }
+    nav a.active { color: var(--accent); background: var(--surface); font-weight: 500; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.75rem 0; color: var(--text-muted); }
+    .stats-row {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .stat { font-size: 0.875rem; color: var(--text-muted); }
+    .stat strong { color: var(--text); font-weight: 600; }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(167,139,250,0.06); }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-zone label { cursor: pointer; color: var(--accent); font-size: 0.9rem; }
+    .upload-zone .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .row input[type="checkbox"] { accent-color: var(--accent); }
+    .row label { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.danger { background: var(--danger); color: #fff; }
+    button.danger:hover:not(:disabled) { filter: brightness(1.1); }
+    .error { color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem; }
+    .file-list { list-style: none; margin: 0; padding: 0; }
+    .file-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .file-list li:last-child { border-bottom: none; }
+    .file-list a { color: var(--accent); text-decoration: none; word-break: break-all; font-size: 0.9rem; }
+    .file-list a:hover { text-decoration: underline; }
+    .file-list .size { font-size: 0.8rem; color: var(--text-muted); flex-shrink: 0; }
+    .file-list .file-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+    .file-list .file-collection { font-size: 0.8rem; color: var(--text-muted); background: var(--border); padding: 0.15rem 0.4rem; border-radius: 4px; }
+    .file-list .file-filename { font-weight: 500; }
+    .file-list .file-actions { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: none; background: var(--border); color: var(--text); }
+    .btn-small:hover { background: var(--surface-hover); }
+    .btn-small.link { text-decoration: none; }
+    .btn-small.danger { background: var(--danger); color: #fff; }
+    .collection-stats { margin-top: 0.5rem; }
+    .collection-list { list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+    .collection-list li { padding: 0.2rem 0; }
+    .empty { color: var(--text-muted); font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: var(--text-muted); }
+    .form-group input {
+      width: 100%;
+      max-width: 280px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+    .loading { color: var(--text-muted); }
+    .v-enter-active, .v-leave-active { transition: opacity 0.15s ease; }
+    .v-enter-from, .v-leave-to { opacity: 0; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1>Pictago</h1>
+      <div class="header-actions" v-if="me.username">
+        <span class="user-badge">
+          <span>Logged in as <strong>{{ me.username }}</strong></span>
+          <span class="admin" v-if="me.username === 'admin'">(admin)</span>
+        </span>
+        <a href="/logout" class="logout-link">Log out</a>
+      </div>
+    </header>
+    <nav>
+      <a href="#" :class="{ active: tab === 'upload' }" @click.prevent="tab = 'upload'">Upload</a>
+      <a href="#" :class="{ active: tab === 'users' }" @click.prevent="tab = 'users'" v-if="me.username === 'admin'">Users</a>
+      <a href="#" :class="{ active: tab === 'keys' }" @click.prevent="tab = 'keys'">API keys</a>
+      <a href="#" :class="{ active: tab === 'password' }" @click.prevent="tab = 'password'">Password</a>
+    </nav>
+
+    <div v-if="tab === 'upload'">
+      <div class="card">
+        <h2>Your statistics</h2>
+        <div class="stats-row">
+          <span class="stat"><strong>{{ stats.file_count }}</strong> files</span>
+          <span class="stat"><strong>{{ formatBytes(stats.total_size) }}</strong> total</span>
+          <span class="stat"><strong>{{ stats.collection_count || 0 }}</strong> collections</span>
+        </div>
+        <div v-if="stats.collections && stats.collections.length" class="collection-stats">
+          <p class="stat" style="margin-bottom: 0.5rem;">Per collection:</p>
+          <ul class="collection-list">
+            <li v-for="c in stats.collections" :key="c.name">
+              <strong>{{ c.name }}</strong>: {{ c.file_count }} files, {{ formatBytes(c.total_size) }}
+            </li>
+          </ul>
+        </div>
+        <p class="stat" v-if="config.max_upload_mb" style="margin-top: 0.5rem;">Max {{ config.max_upload_mb }} MB per image (JPEG, PNG, GIF, WebP only)</p>
+      </div>
+      <div class="card">
+        <h2>Upload images</h2>
+        <div class="form-group" style="margin-bottom: 0.75rem;">
+          <label for="collection">Collection</label>
+          <input type="text" id="collection" v-model="collection" placeholder="default" style="max-width: 100%;">
+          <p class="hint" style="margin-top: 0.25rem;">Files go under /files/your_id/collection_name/</p>
+        </div>
+        <div class="upload-zone" :class="{ dragover: dragOver }" @dragenter.prevent="onDragover" @dragover.prevent="onDragover" @dragleave.prevent="dragOver = false" @drop.prevent.capture="onDrop">
+          <input type="file" ref="fileInput" accept="image/*" multiple @change="onFileSelect">
+          <label @click.prevent="triggerFileInput">Choose files or drag here</label>
+          <p class="hint" v-if="config.max_upload_mb">Max {{ config.max_upload_mb }} MB per file</p>
+        </div>
+        <p class="hint" v-if="selectedFiles.length" style="margin-top: 0.5rem;">{{ selectedFiles.length }} file(s) selected: {{ selectedFiles.map(f => f.name).join(', ') }}</p>
+        <div class="row">
+          <input type="checkbox" id="opt" v-model="optimize">
+          <label for="opt">Optimise (resize &amp; compress)</label>
+        </div>
+        <button type="button" :disabled="!selectedFiles.length || uploading" @click="upload">
+          {{ uploading ? 'Uploading…' : 'Upload' }}
+        </button>
+        <p class="error" v-if="uploadError">{{ uploadError }}</p>
+      </div>
+      <div class="card">
+        <h2>Direct links</h2>
+        <div class="form-group" style="margin-bottom: 0.75rem;" v-if="files.length">
+          <input type="text" v-model="fileSearchQuery" placeholder="Search by filename or collection…" style="max-width: 100%;">
+        </div>
+        <p class="loading" v-if="filesLoading">Loading…</p>
+        <ul class="file-list" v-else-if="filteredFiles.length">
+          <li v-for="f in filteredFiles" :key="f.id">
+            <span class="file-info">
+              <span class="file-collection">{{ f.collection }}</span>
+              <span class="file-filename">{{ f.filename || f.path }}</span>
+              <span class="size">{{ formatBytes(f.size) }}</span>
+            </span>
+            <span class="file-actions">
+              <button type="button" class="btn-small" @click="copyFileUrl(f)">Copy URL</button>
+              <a :href="baseUrl + f.path" target="_blank" rel="noopener" class="btn-small link">Open</a>
+              <button type="button" class="btn-small danger" @click="deleteFile(f.id)">Delete</button>
+            </span>
+          </li>
+        </ul>
+        <p class="empty" v-else>No files yet.<span v-if="fileSearchQuery"> No matches for "{{ fileSearchQuery }}".</span></p>
+      </div>
+    </div>
+
+    <div v-if="tab === 'users' && me.username === 'admin'">
+      <div class="card">
+        <h2>Add user</h2>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" v-model="newUser.username" placeholder="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" v-model="newUser.password" placeholder="password">
+        </div>
+        <button @click="createUser" :disabled="!newUser.username || !newUser.password || usersLoading">Create</button>
+        <p class="error" v-if="usersError">{{ usersError }}</p>
+      </div>
+      <div class="card">
+        <h2>Users</h2>
+        <p class="loading" v-if="usersLoading">Loading…</p>
+        <table v-else>
+          <thead>
+            <tr><th>User</th><th>Files</th><th>Total size</th><th></th></tr>
+          </thead>
+          <tbody>
+            <template v-for="u in users" :key="u.id">
+              <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.file_count }}</td>
+                <td>{{ formatBytes(u.total_size) }}</td>
+                <td>
+                  <button class="btn-small" @click="toggleUserCollections(u.id)" :disabled="u.file_count === 0">
+                    {{ expandedUserId === u.id ? 'Hide' : 'Collections' }}
+                  </button>
+                  <button class="btn-small danger" @click="deleteUser(u.id)" :disabled="u.username === 'admin'">Delete user</button>
+                </td>
+              </tr>
+              <tr v-if="expandedUserId === u.id">
+                <td colspan="4" style="padding-top: 0; padding-bottom: 0.75rem; background: var(--surface);">
+                  <p class="loading" v-if="loadingUserStats === u.id">Loading collections…</p>
+                  <div v-else-if="userStats[u.id] && userStats[u.id].collections && userStats[u.id].collections.length" class="collection-stats">
+                    <ul class="collection-list">
+                      <li v-for="c in userStats[u.id].collections" :key="c.name" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.35rem 0;">
+                        <span><strong>{{ c.name }}</strong> — {{ c.file_count }} file(s), {{ formatBytes(c.total_size) }}</span>
+                        <button type="button" class="btn-small danger" @click="deleteCollection(u.id, c.name)">Delete collection</button>
+                      </li>
+                    </ul>
+                  </div>
+                  <p class="empty" v-else>No collections.</p>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="tab === 'keys'">
+      <div class="card">
+        <h2>Create API key</h2>
+        <p class="stat" style="margin-bottom: 0.75rem;">Use API keys to call the API without the UI (e.g. <code>X-API-Key: your_key</code> or <code>Authorization: Bearer your_key</code>).</p>
+        <div class="form-group">
+          <label>Name (optional)</label>
+          <input type="text" v-model="newKeyName" placeholder="e.g. my script">
+        </div>
+        <button @click="createKey" :disabled="apiKeysLoading">Create key</button>
+        <p class="error" v-if="keysError">{{ keysError }}</p>
+        <div v-if="createdKey" class="card" style="margin-top: 1rem; background: var(--bg); border-color: var(--success);">
+          <p class="stat" style="color: var(--success);">Copy the key now — it won't be shown again:</p>
+          <code style="word-break: break-all; font-size: 0.85rem;">{{ createdKey }}</code>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Your API keys</h2>
+        <p class="loading" v-if="apiKeysLoading">Loading…</p>
+        <table v-else-if="apiKeys.length">
+          <thead>
+            <tr><th>Name</th><th>Prefix</th><th>Created</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="k in apiKeys" :key="k.id">
+              <td>{{ k.name || '—' }}</td>
+              <td><code>{{ k.prefix }}</code></td>
+              <td>{{ k.created_at }}</td>
+              <td><button class="danger" @click="deleteKey(k.id)">Delete</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="empty" v-else>No API keys yet.</p>
+      </div>
+    </div>
+
+    <div v-if="tab === 'password'">
+      <div class="card">
+        <h2>Change password</h2>
+        <div class="form-group">
+          <label>Current password</label>
+          <input type="password" v-model="pw.current" placeholder="current password">
+        </div>
+        <div class="form-group">
+          <label>New password</label>
+          <input type="password" v-model="pw.new" placeholder="new password">
+        </div>
+        <button @click="changePassword" :disabled="!pw.current || !pw.new || pwLoading">Update</button>
+        <p class="error" v-if="pwError">{{ pwError }}</p>
+        <p class="stat" style="color: var(--success); margin-top: 0.5rem;" v-if="pwSuccess">Password updated.</p>
+      </div>
+    </div>
+  </div>
+  <script nonce="__CSP_NONCE__">
+    (function() {
+      if (typeof Vue === 'undefined') {
+        document.getElementById('app').innerHTML = '<p style="color:#f87171; padding:1rem;">Failed to load Vue. Check your connection or try a different network.</p>';
+        return;
+      }
+      const { createApp } = Vue;
+      const app = createApp({
+      data() {
+        return {
+          tab: 'upload',
+          me: { username: '' },
+          stats: { file_count: 0, total_size: 0, collection_count: 0, collections: [] },
+          config: { max_upload_mb: 10 },
+          files: [],
+          filesLoading: true,
+          selectedFiles: [],
+          collection: '',
+          optimize: false,
+          uploading: false,
+          uploadError: '',
+          baseUrl: window.location.origin,
+          users: [],
+          usersLoading: false,
+          usersError: '',
+          newUser: { username: '', password: '' },
+          userStats: {},
+          expandedUserId: null,
+          loadingUserStats: null,
+          pw: { current: '', new: '' },
+          pwLoading: false,
+          pwError: '',
+          pwSuccess: false,
+          dragOver: false,
+          apiKeys: [],
+          apiKeysLoading: false,
+          newKeyName: '',
+          createdKey: '',
+          keysError: '',
+          fileSearchQuery: ''
+        };
+      },
+      computed: {
+        filteredFiles() {
+          const q = (this.fileSearchQuery || '').toLowerCase().trim();
+          if (!q) return this.files || [];
+          return (this.files || []).filter(f => {
+            const name = (f.filename || f.path || '').toLowerCase();
+            const col = (f.collection || '').toLowerCase();
+            return name.includes(q) || col.includes(q);
+          });
+        }
+      },
+      mounted() {
+        this.preventDocumentDrop();
+        this.fetchMe();
+      },
+      methods: {
+        async api(path, opts = {}) {
+          const res = await fetch(path, { credentials: 'include', ...opts });
+          if (res.status === 401) return null;
+          return res;
+        },
+        async fetchMe() {
+          const res = await this.api('/api/me');
+          if (!res) {
+            window.location.href = '/login';
+            return;
+          }
+          if (res.ok) {
+            this.me = (await res.json()) || { username: '' };
+            this.fetchConfig();
+            this.fetchStats();
+            this.fetchFiles();
+          } else {
+            window.location.href = '/login';
+          }
+        },
+        async fetchConfig() {
+          const res = await this.api('/api/config');
+          if (res && res.ok) this.config = (await res.json()) || { max_upload_mb: 10 };
+        },
+        async fetchKeys() {
+          this.apiKeysLoading = true;
+          const res = await this.api('/api/keys');
+          this.apiKeysLoading = false;
+          if (res && res.ok) {
+            const data = await res.json();
+            this.apiKeys = Array.isArray(data) ? data : [];
+          } else this.apiKeys = [];
+        },
+        async createKey() {
+          this.keysError = '';
+          this.createdKey = '';
+          const res = await this.api('/api/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.newKeyName.trim() })
+          });
+          if (res && res.status === 201) {
+            const j = await res.json();
+            this.createdKey = j.key || '';
+            this.newKeyName = '';
+            this.fetchKeys();
+          } else this.keysError = 'Failed to create key.';
+        },
+        async deleteKey(id) {
+          if (!confirm('Revoke this API key?')) return;
+          const res = await this.api('/api/keys/' + id, { method: 'DELETE' });
+          if (res && res.status === 204) {
+            this.fetchKeys();
+            if (this.createdKey) this.createdKey = '';
+          }
+        },
+        copyFileUrl(f) {
+          const url = this.baseUrl + (f.path || '');
+          navigator.clipboard.writeText(url).then(() => {}, () => {});
+        },
+        async deleteFile(id) {
+          if (!confirm('Delete this file? It cannot be undone.')) return;
+          const res = await this.api('/api/files/' + id, { method: 'DELETE' });
+          if (res && res.status === 204) {
+            this.fetchFiles();
+            this.fetchStats();
+          }
+        },
+        async fetchStats() {
+          const res = await this.api('/api/stats');
+          if (res && res.ok) {
+            const s = await res.json();
+            this.stats = s ? { file_count: s.file_count || 0, total_size: s.total_size || 0, collection_count: s.collection_count || 0, collections: s.collections || [] } : { file_count: 0, total_size: 0, collection_count: 0, collections: [] };
+          }
+        },
+        async fetchFiles() {
+          this.filesLoading = true;
+          const res = await this.api('/api/files');
+          this.filesLoading = false;
+          if (res && res.ok) {
+            const data = await res.json();
+            this.files = Array.isArray(data) ? data : [];
+          } else this.files = [];
+        },
+        async fetchUsers() {
+          if (this.me.username !== 'admin') return;
+          this.usersLoading = true;
+          this.usersError = '';
+          const res = await this.api('/api/users');
+          this.usersLoading = false;
+          if (res && res.ok) {
+            const data = await res.json();
+            this.users = Array.isArray(data) ? data : [];
+          } else this.users = [];
+        },
+        formatBytes(n) {
+          if (n == null || n === 0) return '0 B';
+          const k = 1024; const sizes = ['B','KB','MB','GB'];
+          const i = Math.floor(Math.log(n) / Math.log(k));
+          return (n / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+        },
+        preventDocumentDrop() {
+          document.addEventListener('dragover', (e) => {
+            if (e.target.closest && e.target.closest('.upload-zone')) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'none';
+          }, false);
+          document.addEventListener('drop', (e) => {
+            if (e.target.closest && e.target.closest('.upload-zone')) return;
+            e.preventDefault();
+            e.stopPropagation();
+          }, false);
+        },
+        triggerFileInput() {
+          this.$refs.fileInput?.click();
+        },
+        onFileSelect(e) {
+          this.selectedFiles = Array.from(e.target.files || []);
+          this.uploadError = '';
+        },
+        onDragover(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'copy';
+          this.dragOver = true;
+        },
+        onDrop(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.dragOver = false;
+          const raw = e.dataTransfer && e.dataTransfer.files;
+          const files = raw ? Array.from(raw).filter(f => f.type && f.type.startsWith('image/')) : [];
+          this.selectedFiles = files.length ? [...files] : [];
+          this.uploadError = files.length ? '' : 'Only image files are accepted.';
+        },
+        async upload() {
+          if (!this.selectedFiles.length) return;
+          this.uploadError = '';
+          this.uploading = true;
+          let err = false;
+          const collection = (this.collection && this.collection.trim()) ? this.collection.trim() : 'default';
+          for (const file of this.selectedFiles) {
+            const form = new FormData();
+            form.append('file', file);
+            form.append('collection', collection);
+            form.append('optimize', this.optimize ? 'true' : 'false');
+            const res = await this.api('/api/upload', { method: 'POST', body: form });
+            if (!res || !res.ok) err = true;
+          }
+          this.uploading = false;
+          this.selectedFiles = [];
+          this.$refs.fileInput.value = '';
+          if (err) this.uploadError = 'Some uploads failed.';
+          this.fetchStats();
+          this.fetchFiles();
+        },
+        async createUser() {
+          this.usersError = '';
+          const res = await this.api('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: this.newUser.username, password: this.newUser.password })
+          });
+          if (res && res.status === 201) {
+            this.newUser = { username: '', password: '' };
+            this.fetchUsers();
+          } else this.usersError = res && res.status === 409 ? 'User already exists.' : 'Failed to create user.';
+        },
+        async deleteUser(id) {
+          if (!confirm('Delete this user and their upload records?')) return;
+          const idStr = String(id);
+          const res = await this.api('/api/users/' + idStr, { method: 'DELETE' });
+          if (res && res.ok) {
+            this.expandedUserId = null;
+            delete this.userStats[idStr];
+          }
+          if (res && res.status === 204) this.fetchUsers();
+        },
+        async toggleUserCollections(userId) {
+          const id = String(userId);
+          if (this.expandedUserId === id) {
+            this.expandedUserId = null;
+            return;
+          }
+          this.expandedUserId = id;
+          if (this.userStats[id]) return;
+          this.loadingUserStats = id;
+          const res = await this.api('/api/users/' + id + '/stats');
+          this.loadingUserStats = null;
+          if (res && res.ok) {
+            const data = await res.json();
+            const collections = Array.isArray(data.collections) ? data.collections : [];
+            this.userStats = { ...this.userStats, [id]: { ...data, collections } };
+          } else {
+            this.expandedUserId = null;
+          }
+        },
+        async deleteCollection(userId, collectionName) {
+          if (!confirm(`Delete the collection "${collectionName}" and all its files? This cannot be undone.`)) return;
+          const id = String(userId);
+          const res = await this.api('/api/users/' + id + '/collections/' + encodeURIComponent(collectionName), { method: 'DELETE' });
+          if (res && res.ok) {
+            await this.fetchUsers();
+            const stRes = await this.api('/api/users/' + id + '/stats');
+            if (stRes && stRes.ok) {
+              const data = await stRes.json();
+              const collections = Array.isArray(data.collections) ? data.collections : [];
+              this.userStats = { ...this.userStats, [id]: { ...data, collections } };
+            }
+            this.fetchStats();
+            this.fetchFiles();
+          }
+        },
+        async changePassword() {
+          this.pwError = '';
+          this.pwSuccess = false;
+          this.pwLoading = true;
+          const res = await this.api('/api/me/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: this.pw.current, new_password: this.pw.new })
+          });
+          this.pwLoading = false;
+          if (res && res.status === 204) {
+            this.pwSuccess = true;
+            this.pw = { current: '', new: '' };
+          } else this.pwError = res && res.status === 401 ? 'Wrong current password.' : 'Failed to update.';
+        }
+      },
+      watch: {
+        tab(n) {
+          if (n === 'users' && this.me.username === 'admin') this.fetchUsers();
+          if (n === 'keys') this.fetchKeys();
+        }
+      }
+    });
+    app.mount('#app');
+    })();
+  </script>
+</body>
+</html>

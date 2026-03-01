@@ -1,0 +1,18 @@
+# Build output
+/pictago
+*.exe
+
+# Data and runtime (do not commit DB or uploads)
+/data/
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Env overrides (if used)
+.env
+.env.local
