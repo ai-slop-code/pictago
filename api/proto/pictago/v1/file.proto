@@ -24,7 +24,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 service FileUpload {
   rpc UploadFile(UploadFileRequest) returns (UploadFileResponse) {
     option (google.api.http) = {
-      post: "/v1/upload"
+      post: "/v1/file"
       body: "*"
     };
   }

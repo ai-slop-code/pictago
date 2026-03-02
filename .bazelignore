@@ -30,3 +30,7 @@ testdata/tmp
 # Ignore generated files (if not managed by Bazel)
 gen
 .tmp
+
+# Ignore pnpm node_modules installed locally (managed by Bazel via rules_js)
+web/node_modules
+

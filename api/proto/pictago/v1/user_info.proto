@@ -27,10 +27,25 @@ service UserInfo {
       get: "/v1/user/me"
     };
   }
+  rpc GetUserStatistics(GetUserStatisticsRequest) returns (GetUserStatisticsResponse) {
+    option (google.api.http) = {
+      get: "/v1/user/statistics"
+    };
+  }
 }
 
 message GetUserInfoRequest {}
 
 message GetUserInfoResponse {
   string username = 1;
+  string id = 2;
+}
+
+message GetUserStatisticsRequest {}
+
+message GetUserStatisticsResponse {
+  int32 total_files_uploaded = 1;
+  int32 total_storage_used_bytes = 2;
+  int32 total_collections_created = 3;
+  int32 total_api_keys = 4;
 }

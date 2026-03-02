@@ -1,0 +1,14 @@
+fullNameOverride: ""
+postgres:
+  image:
+    pullPolicy: IfNotPresent
+    repository: docker.io
+    tag: 17
+  enabled: true
+  database: pictago
+  username: pictago
+  password: pictago
+  service:
+    port: 5342
+  persistence:
+    mountPath: /var/lib/postgresql/data

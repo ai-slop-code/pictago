@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pictago.fullname" . }}-pictago
+  labels:
+    {{ include "pictago.labels" . | nindent 4 }}

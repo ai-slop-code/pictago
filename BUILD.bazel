@@ -5,6 +5,16 @@ load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@tar.bzl", "mutate", "tar")
 load("//bazel/oci:images.bzl", "declare_container_images")
 
+# gazelle:prefix github.com/ai-slop-code/pictago
+# gazelle:go_grpc_compilers @rules_go//proto:go_proto,@rules_go//proto:go_grpc_v2
+# gazelle:resolve proto proto validate/validate.proto @com_github_envoyproxy_protoc_gen_validate//validate:validate_proto
+# gazelle:resolve proto go validate/validate.proto @com_github_envoyproxy_protoc_gen_validate//validate:validate
+# gazelle:resolve proto proto google/api/annotations.proto @googleapis//google/api:annotations_proto
+# gazelle:resolve proto go google/api/annotations.proto @googleapis//google/api:annotations_go_proto
+# gazelle:resolve proto proto google/api/field_behavior.proto @googleapis//google/api:field_behavior_proto
+# gazelle:resolve proto go google/api/field_behavior.proto @googleapis//google/api:field_behavior_go_proto
+# gazelle:resolve proto proto protoc-gen-openapiv2/options/annotations.proto @grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_proto
+# gazelle:resolve proto go protoc-gen-openapiv2/options/annotations.proto @grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_go_proto
 gazelle(name = "gazelle")
 
 alias(
@@ -35,14 +45,4 @@ alias(
 alias(
     name = "generate",
     actual = "//scripts:generate",
-)
-
-# Container image for the dataflow_exporter application
-declare_container_images(
-    name = "dynatrace_reporter",
-    base_image = "@ubuntu_2404",
-    binary = "//cmd/dataflow_exporter:dataflow_exporter",
-    entrypoint = "//scripts:entrypoint",
-    registry = "docker-virtual.repo.eb.lan.at",
-    repository = "erstedigital/int90/dataflow_exporter",
 )

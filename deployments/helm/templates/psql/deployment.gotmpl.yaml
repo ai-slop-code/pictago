@@ -1,32 +1,48 @@
+{{- if .Values.postgres.enabled | default false }}
+{{- $secretName := .Values.postgres.auth.existingSecret | default (printf "%s-postgres-credentials" (include "pictago.fullname" .)) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres
+  name: {{ include "pictago.fullname" . }}-postgres
+  labels:
+    {{ include "pictago.labels" . | nindent 4 }}
 spec:
+  replicas: {{ .Values.postgres.replicas | default 1 }}
   selector:
     matchLabels:
-      app: {{ .Values.longhorn.database.appName }}
-  replicas: 1
+      app.kubernetes.io/name: {{ include "pictago.fullname" . }}-postgres
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.longhorn.database.appName }}
+        app.kubernetes.io/name: {{ include "pictago.fullname" . }}-postgres
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
-        - name: {{ $dbName := print .Values.longhorn.database.databaseName }}{{ $dbName }}
-          image: {{ .Values.longhorn.database.image }}
+        - name: postgres
+          image: {{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.postgres.service.port }}
           env:
             - name: POSTGRES_DB
-              value: {{ .Values.longhorn.database.databaseName }}
-          ports:
-            - containerPort: {{ .Values.longhorn.database.port }}
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
           volumeMounts:
-            - name: {{ .Values.longhorn.database.volumes.mountName }}
-              mountPath: {{ .Values.longhorn.database.volumes.mountPath }}
-          envFrom:
-            - secretRef:
-                name: {{ .Values.longhorn.database.secretRef.name }}
+            - name: data
+              mountPath: {{ .Values.postgres.persistence.mountPath }}
       volumes:
-        - name: {{ .Values.longhorn.database.volumes.mountName }}
+        - name: data
           persistentVolumeClaim:
-            claimName: {{ .Values.longhorn.database.volumes.claimName }}
+            claimName: {{ .Values.postgres.persistence.existingClaim }}
+{{- end }}

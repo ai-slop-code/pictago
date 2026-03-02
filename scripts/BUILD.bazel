@@ -44,17 +44,6 @@ sh_template(
 )
 
 sh_template(
-    name = "go_mod_tidy",
-    data = [
-        ":go_bin_for_host",
-    ],
-    substitutions = {
-        "@@GO@@": "$(rootpath :go_bin_for_host)",
-    },
-    template = "go_tidy.sh.in",
-)
-
-sh_template(
     name = "shfmt",
     data = [
         "@com_github_katexochen_sh_v3//cmd/shfmt",
@@ -165,17 +154,6 @@ sh_template(
 )
 
 sh_template(
-    name = "cli_docgen",
-    data = [
-        "//hack/clidocgen",
-    ],
-    substitutions = {
-        "@@CLIDOCGEN@@": "$(rootpath //hack/clidocgen:clidocgen)",
-    },
-    template = "cli_docgen.sh.in",
-)
-
-sh_template(
     name = "unused_gh_actions",
     data = [],
     substitutions = {},
@@ -215,7 +193,6 @@ multirun(
     commands = [
         ":shfmt",
         ":gofumpt",
-        ":go_mod_tidy",
         ":gazelle_generate",
         #":buildifier_fix",
         ":keep_sorted",
@@ -262,19 +239,9 @@ multirun(
 )
 
 multirun(
-    name = "generate_docs",
-    commands = [
-        ":cli_docgen",
-    ],
-    jobs = 0,  # execute concurrently
-    visibility = ["//visibility:public"],
-)
-
-multirun(
     name = "generate",
     commands = [
         ":generate_files",
-        ":generate_docs",
     ],
     jobs = 1,  # execute sequentially
     visibility = ["//visibility:public"],

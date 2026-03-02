@@ -1,0 +1,14 @@
+[grpc]
+port = 9090
+host = "localhost"
+
+[http]
+port = 8080
+host = "localhost"
+
+[database]
+host = 5432
+host = "localhost"
+username = "!secret"
+password = "!secret"
+migrations_dir = "migrations"

@@ -1,0 +1,40 @@
+load("@aspect_rules_js//js:defs.bzl", "js_run_binary", "js_run_devserver")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//web:vite/package_json.bzl", vite_bin = "bin")
+
+npm_link_all_packages(name = "node_modules")
+
+vite_bin.vite_binary(
+    name = "vite",
+    chdir = package_name(),
+)
+
+SRCS = [
+    "index.html",
+    "package.json",
+    "vite.config.js",
+    ":node_modules/@vitejs/plugin-vue",
+    ":node_modules/vite",
+    ":node_modules/vue",
+]
+
+js_run_binary(
+    name = "build",
+    srcs = SRCS + ["//web/src:sources"],
+    args = ["build"],
+    out_dirs = ["dist"],
+    tool = ":vite",
+)
+
+js_run_devserver(
+    name = "dev",
+    args = ["--host"],
+    data = SRCS + ["//web/src:sources"],
+    tool = ":vite",
+)
+
+filegroup(
+    name = "assets",
+    srcs = [":build"],
+    visibility = ["//visibility:public"],
+)

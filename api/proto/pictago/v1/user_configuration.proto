@@ -21,7 +21,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   }
 };
 
-service Configuration {
+service UserConfiguration {
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
     option (google.api.http) = {
       get: "/v1/config/upload_limit"
@@ -29,7 +29,7 @@ service Configuration {
   }
   rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse) {
     option (google.api.http) = {
-      post: "/v1/config/upload_limit"
+      put: "/v1/config/upload_limit"
       body: "*"
     };
   }
@@ -49,6 +49,38 @@ service Configuration {
   rpc DeleteApiKey(DeleteApiKeyRequest) returns (DeleteApiKeyResponse) {
     option (google.api.http) = {
       delete: "/v1/config/api_keys/{key_id}"
+    };
+  }
+
+  rpc CreateFileCollection(CreateFileCollectionRequest) returns (CreateFileCollectionResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/file_collections"
+      body: "*"
+    };
+  }
+
+  rpc GetFileCollections(GetFileCollectionsRequest) returns (GetFileCollectionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/file_collections"
+    };
+  }
+
+  rpc DeleteFileCollection(DeleteFileCollectionRequest) returns (DeleteFileCollectionResponse) {
+    option (google.api.http) = {
+      delete: "/v1/config/file_collections/{collection_id}"
+    };
+  }
+
+  rpc UpdateFileCollection(UpdateFileCollectionRequest) returns (UpdateFileCollectionResponse) {
+    option (google.api.http) = {
+      put: "/v1/config/file_collections/{collection_id}"
+      body: "*"
+    };
+  }
+
+  rpc GetFileCollection(GetFileCollectionRequest) returns (GetFileCollectionResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/file_collections/{collection_id}"
     };
   }
 }
@@ -90,4 +122,48 @@ message DeleteApiKeyRequest {
 
 message DeleteApiKeyResponse {
   bool success = 1;
+}
+
+message CreateFileCollectionRequest {
+  string name = 1;
+}
+
+message CreateFileCollectionResponse {
+  string collection_id = 1;
+}
+
+message GetFileCollectionsRequest {}
+
+message FileCollection {
+  string collection_id = 1;
+  string name = 2;
+}
+
+message GetFileCollectionsResponse {
+  repeated FileCollection collections = 1;
+}
+
+message DeleteFileCollectionRequest {
+  string collection_id = 1;
+}
+
+message DeleteFileCollectionResponse {
+  bool success = 1;
+}
+
+message UpdateFileCollectionRequest {
+  string collection_id = 1;
+  string name = 2;
+}
+
+message UpdateFileCollectionResponse {
+  bool success = 1;
+}
+
+message GetFileCollectionRequest {
+  string collection_id = 1;
+}
+
+message GetFileCollectionResponse {
+  FileCollection collection = 1;
 }

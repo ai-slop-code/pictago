@@ -1,8 +1,23 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "pictago_db_migrations_lib",
     srcs = ["main.go"],
     importpath = "github.com/ai-slop-code/pictago/cmd/pictago_db_migrations",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//assets",
+        "//cmd/pictago_db_migrations/migrations",
+        "//internal/config",
+        "//internal/log",
+        "@com_github_golang_migrate_migrate_v4//:migrate",
+        "@com_github_golang_migrate_migrate_v4//database/postgres",
+        "@com_github_jackc_pgx_v5//pgxpool",
+    ],
+)
+
+go_binary(
+    name = "pictago_db_migrations",
+    embed = [":pictago_db_migrations_lib"],
     visibility = ["//visibility:public"],
 )

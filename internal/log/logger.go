@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 )
 
 func New(opts ...Option) *slog.Logger {
@@ -46,14 +48,37 @@ func New(opts ...Option) *slog.Logger {
 	return logger
 }
 
+type Logger struct {
+	*slog.Logger
+}
+
+func (log *Logger) Log(ctx context.Context, level logging.Level, msg string, fields ...any) {
+	switch level {
+	case logging.LevelDebug:
+		log.Logger.DebugContext(ctx, msg, fields...)
+	case logging.LevelInfo:
+		log.Logger.InfoContext(ctx, msg, fields...)
+	case logging.LevelWarn:
+		log.Logger.WarnContext(ctx, msg, fields...)
+	case logging.LevelError:
+		log.Logger.ErrorContext(ctx, msg, fields...)
+	default:
+		log.Logger.InfoContext(ctx, msg, fields...)
+	}
+}
+
+var _ logging.Logger = &Logger{}
+
 // NewDefaultLogger initializes a logger with default settings.
 // It uses the LOG_LEVEL environment variable to set the log level
 // and includes source information in the logs.
-func NewDefaultLogger() *slog.Logger {
-	return New(
+func NewDefaultLogger() Logger {
+	logger := Logger{}
+	logger.Logger = New(
 		WithLevel(os.Getenv("LOG_LEVEL")),
 		WithSource(),
 	)
+	return logger
 }
 
 func NoOp() *slog.Logger {

@@ -1,0 +1,6 @@
+name: Minimal image host in Go with a Vue.js admin UI and REST API
+apiVersion: v2
+version: 0.1.0
+sources:
+  - git@github.com:karafra/pictago.git
+appVersion: 0.1.0

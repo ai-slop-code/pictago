@@ -2,5 +2,7 @@ package assets
 
 import "embed"
 
+const ConfigFileName = "config.toml"
+
 //go:embed config.toml
-var configFs embed.FS
+var CfgFs embed.FS

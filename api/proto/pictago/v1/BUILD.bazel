@@ -1,25 +1,70 @@
 load("@rules_go//go:def.bzl", "go_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_proto_grpc_grpc_gateway//:defs.bzl", "gateway_grpc_compile")
 
 proto_library(
-    name = "pictago_v1_proto",
-    srcs = ["authentication.proto"],
+    name = "v1_proto",
+    srcs = [
+        "authentication.proto",
+        "file.proto",
+        "user_configuration.proto",
+        "user_info.proto",
+        "user_management.proto",
+    ],
     visibility = ["//visibility:public"],
-    deps = ["//google/api:api_proto"],
+    deps = [
+        "@googleapis//google/api:annotations_proto",
+        "@grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_proto",
+    ],
+)
+
+gateway_grpc_compile(
+    name = "v1_gateway_grpc",
+    protos = [":v1_proto"],
+    visibility = ["//visibility:public"],
 )
 
 go_proto_library(
-    name = "pictago_v1_go_proto",
+    name = "v1_go_proto",
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
     importpath = "github.com/ai-slop-code/pictago/api/proto/pictago/v1",
-    proto = ":pictago_v1_proto",
+    proto = ":v1_proto",
     visibility = ["//visibility:public"],
-    deps = ["//google/api:annotations_proto"],
+    deps = [
+        "@googleapis//google/api:annotations_go_proto",
+        "@grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_go_proto",
+    ],
 )
 
 go_library(
-    name = "pictago",
-    embed = [":pictago_v1_go_proto"],
+    name = "v1_go",
+    embed = [":v1_go_proto"],
     importpath = "github.com/ai-slop-code/pictago/api/proto/pictago/v1",
     visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "v1_grpc_gateway",
+    srcs = ["//api/proto/pictago/v1:v1_gateway_grpc"],
+    importpath = "github.com/ai-slop-code/pictago/internal/proto/v1/grpc/gateway",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/proto/pictago/v1:v1_go_proto",
+        "@googleapis//google/api:annotations_go_proto",
+        "@grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_go_proto",
+        "@grpc_ecosystem_grpc_gateway//runtime:go_default_library",
+        "@grpc_ecosystem_grpc_gateway//utilities:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes:go_default_library",
+        "@org_golang_google_grpc//grpclog:go_default_library",
+        "@org_golang_google_grpc//metadata:go_default_library",
+        "@org_golang_google_grpc//status:go_default_library",
+        "@org_golang_google_protobuf//proto:go_default_library",
+        "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
+        "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
+    ],
 )

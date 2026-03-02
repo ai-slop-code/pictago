@@ -22,8 +22,8 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   }
 };
 
-service Management {
-  rpc GetSystemStatus(GetUsersRequest) returns (GetUsersResponse) {
+service UserManagement {
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse) {
     option (google.api.http) = {
       get: "/v1/management/users"
     };
