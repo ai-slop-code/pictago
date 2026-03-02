@@ -1,0 +1,6 @@
+load("@rules_proto_grpc_grpc_gateway//:defs.bzl", "gateway_openapiv2_compile")
+
+gateway_openapiv2_compile(
+    name = "recall_tooling_ocr_server_v1_gateway_openapiv2",
+    protos = ["//api/proto/recall_tooling_ocr_server/v1:recall_tooling_ocr_server_v1_proto"],
+)

@@ -1,0 +1,14 @@
+load("@rules_shell//shell:sh_library.bzl", "sh_library")
+
+exports_files([
+    "repo_command.sh.in",
+    "noop_warn.sh.in",
+])
+
+sh_library(
+    name = "base_lib",
+    srcs = [
+        "lib.bash",
+    ],
+    visibility = ["//visibility:public"],
+)

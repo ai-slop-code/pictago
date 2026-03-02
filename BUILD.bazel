@@ -1,0 +1,48 @@
+load("@aspect_bazel_lib//lib:testing.bzl", "assert_archive_contains")
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+load("@tar.bzl", "mutate", "tar")
+load("//bazel/oci:images.bzl", "declare_container_images")
+
+gazelle(name = "gazelle")
+
+alias(
+    name = "gazelle-update",
+    actual = "//scripts:gazelle_generate",
+)
+
+alias(
+    name = "gazelle-generate",
+    actual = "//scripts:gazelle_generate",
+)
+
+alias(
+    name = "gazelle-check",
+    actual = "//scripts:gazelle_check",
+)
+
+alias(
+    name = "check",
+    actual = "//scripts:check",
+)
+
+alias(
+    name = "tidy",
+    actual = "//scripts:tidy",
+)
+
+alias(
+    name = "generate",
+    actual = "//scripts:generate",
+)
+
+# Container image for the dataflow_exporter application
+declare_container_images(
+    name = "dynatrace_reporter",
+    base_image = "@ubuntu_2404",
+    binary = "//cmd/dataflow_exporter:dataflow_exporter",
+    entrypoint = "//scripts:entrypoint",
+    registry = "docker-virtual.repo.eb.lan.at",
+    repository = "erstedigital/int90/dataflow_exporter",
+)

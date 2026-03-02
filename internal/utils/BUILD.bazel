@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "utils",
+    srcs = [
+        "dates.go",
+        "path.go",
+        "validator.go",
+    ],
+    importpath = "github.beeone.at/dbo/dynatrace-reporter/internal/utils",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_go_playground_validator_v10//:validator"],
+)
+
+go_test(
+    name = "utils_test",
+    size = "small",
+    srcs = [
+        "dates_test.go",
+        "path_test.go",
+        "validator_test.go",
+    ],
+    embed = [":utils"],
+    deps = [
+        "@com_github_go_playground_validator_v10//:validator",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

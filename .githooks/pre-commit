@@ -1,0 +1,9 @@
+#!/bin/sh
+
+failed() {
+  echo ''
+  echo "Linting failed... You can not commit!"
+  exit 1
+}
+
+bazel run //:check || failed

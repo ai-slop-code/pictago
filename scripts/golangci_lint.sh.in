@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+###### script header ######
+
+lib=$(realpath @@BASE_LIB@@) || exit 1
+stat "${lib}" >> /dev/null || exit 1
+
+# shellcheck source=../bazel/shell/lib.bash
+if ! source "${lib}"; then
+  echo "Error: could not find import"
+  exit 1
+fi
+
+golangcilint=$(realpath @@GOLANGCI-LINT@@)
+stat "${golangcilint}" >> /dev/null
+go=$(realpath @@GO@@)
+stat "${go}" >> /dev/null
+
+cd "${BUILD_WORKSPACE_DIRECTORY}"
+
+###### script body ######
+
+modules=()
+while IFS= read -r line; do
+  [[ -n ${line} ]] && modules+=("${line}")
+done < <(${go} list -f '{{.Dir}}' -m)
+
+excludeMods=(
+  "hack/tools"
+)
+
+echo "The following Go modules are excluded and won't be linted with golangci-lint:"
+for exclude in "${excludeMods[@]}"; do
+  for i in "${!modules[@]}"; do
+    if [[ ${modules[i]} == "${BUILD_WORKSPACE_DIRECTORY}/${exclude}" ]]; then
+      echo "  ${modules[i]}"
+      unset 'modules[i]'
+    fi
+  done
+done
+
+statuscode=0
+
+echo "Linting the following Go modules with golangci-lint:"
+for mod in "${modules[@]}"; do
+  printf "\t%s\n" "${mod}"
+  PATH="$(dirname "${go}"):${PATH}" GOROOT=$(${go} env GOROOT) GOPATH=$(${go} env GOPATH) GOCACHE=$(${go} env GOCACHE) CGO_ENABLED=0 ${golangcilint} run --timeout=15m "${mod}/..." >&2 || statuscode=$?
+done
+
+exit "${statuscode}"

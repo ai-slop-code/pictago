@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "log",
+    srcs = [
+        "context.go",
+        "logger.go",
+        "logger_option.go",
+    ],
+    importpath = "github.beeone.at/dbo/dynatrace-reporter/internal/log",
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_opentelemetry_go_otel_trace//:trace"],
+)
+
+go_test(
+    name = "log_test",
+    size = "small",
+    srcs = [
+        "context_test.go",
+        "logger_option_test.go",
+        "logger_test.go",
+    ],
+    embed = [":log"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)

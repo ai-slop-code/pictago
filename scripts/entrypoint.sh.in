@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+set -o allexport
+
+SECONDS=0
+
+# Default values
+recipients_to=""
+recipients_cc=""
+mail_server=""
+mail_username=""
+mail_password=""
+report_kind=""
+country=""
+
+YEAR=$(date '+%Y' --date "$(date +%Y-%m-15) -1 month")
+MONTH=$(date '+%B' --date="$(date +%Y-%m-15) -1 month" | tr '[:upper:]' '[:lower:]')
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --recipients-to)
+    if [[ -n $2 && $2 != --* ]]; then
+      recipients_to="$2"
+      shift 2
+    else
+      echo "Error: --recipients-to requires a comma-separated list"
+      exit 1
+    fi
+    ;;
+  --recipients-cc)
+    if [[ -n $2 && $2 != --* ]]; then
+      recipients_cc="$2"
+      shift 2
+    else
+      echo "Error: --recipients-cc requires a comma-separated list"
+      exit 1
+    fi
+    ;;
+  --mail-server)
+    if [[ -n $2 && $2 != --* ]]; then
+      mail_server="$2"
+      shift 2
+    else
+      echo "Error: --mail-server requires a string argument"
+      exit 1
+    fi
+    ;;
+  --mail-username)
+    if [[ -n $2 && $2 != --* ]]; then
+      mail_username="$2"
+      shift 2
+    else
+      echo "Error: --mail-username requires a string argument"
+      exit 1
+    fi
+    ;;
+  --mail-password)
+    if [[ -n $2 && $2 != --* ]]; then
+      mail_password="$2"
+      shift 2
+    else
+      echo "Error: --mail-username requires a string argument"
+      exit 1
+    fi
+    ;;
+  --report-kind)
+    if [[ -n $2 && $2 != --* ]]; then
+      report_kind="$2"
+      shift 2
+    else
+      echo "Error: --report-kind requires a string argument"
+      exit 1
+    fi
+    ;;
+  --country)
+    if [[ -n $2 && $2 != --* ]]; then
+      country="$2"
+      shift 2
+    else
+      echo "Error: --country requires a string argument"
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Unknown argument: $1"
+    exit 1
+    ;;
+  esac
+done
+
+# Validate inputs
+if [[ -z ${recipients_to} ]]; then
+  echo "Error: --recipients-to is required"
+  exit 1
+fi
+
+if [[ -z ${mail_server} ]]; then
+  echo "Error: --mail-server is required"
+  exit 1
+fi
+
+if [[ -z ${mail_username} ]]; then
+  echo "Error: --mail-username is required"
+  exit 1
+fi
+
+if [[ -z ${mail_password} ]]; then
+  echo "Error: --mail-password is required"
+  exit 1
+fi
+
+if [[ -z ${report_kind} ]]; then
+  echo "Error: --report-kind is required"
+  exit 1
+fi
+
+if [[ -z ${country} ]]; then
+  echo "Error: --country is required"
+  exit 1
+fi
+
+center() {
+  termwidth="$(tput cols)"
+  padding="$(printf '%0.1s' -{1..50})"
+  printf '%*.*s %s %*.*s\n' 0 "$(((termwidth - 2 - ${#1}) / 2))" "${padding}" "$1" 0 "$(((termwidth - 1 - ${#1}) / 2))" "${padding}"
+}
+
+# Convert recipients to array
+IFS=',' read -r -a recipients_to_array <<< "${recipients_to}"
+IFS=',' read -r -a recipients_cc_array <<< "${recipients_cc}"
+
+center 'Configuration parameters'
+
+echo "Recipients (TO): ${recipients_to_array[*]}"
+echo "Recipients (CC): ${recipients_cc_array[*]}"
+
+center "Generating report"
+
+# shellcheck disable=SC2086
+OUTPUT_EXCEL_FILE_NAME=$(dataflow_exporter generate-${report_kind}-report --country "${country^^}" --output-dir "/reports" --upload-to-sharepoint)
+
+echo "Generated report file: ${OUTPUT_EXCEL_FILE_NAME}"
+
+center "Report generation completed."
+
+center "Converting report to PDF"
+
+CONVERSION_OUTPUT=$(libreoffice --headless --convert-to pdf "${OUTPUT_EXCEL_FILE_NAME}")
+
+echo "${CONVERSION_OUTPUT}"
+
+OUTPUT_FILE_NAME="${CONVERSION_OUTPUT#*-> }"
+OUTPUT_FILE_NAME="${OUTPUT_FILE_NAME%% using*}"
+
+echo Generated report file: "${OUTPUT_FILE_NAME}"
+
+center "Sending report via email"
+
+echo "Using mail server: ${mail_server}"
+echo "Using mail username: ${mail_username}"
+
+s-nail \
+  -s "${report_kind^^} report - ${country^^} PROD ${MONTH^} ${YEAR}" \
+  -a "${OUTPUT_FILE_NAME}" \
+  -S ssl-verify=ignore \
+  -S mta="smtp://${mail_username}:${mail_password}@${mail_server}" \
+  -S smtp-auth=login \
+  -S smtp-use-starttls \
+  -S password="${mail_password}" \
+  -S from="dbo-noreply@erstegroup.com" \
+  -S v15-compat \
+  -c "${recipients_cc_array[@]}" \
+  "${recipients_to_array[@]}" <<< "Dear all,
+attached you can find ${report_kind^^} report for ${country^^} PROD for ${MONTH^} ${YEAR}.
+
+BR,
+DBO Team
+-----------------------------------------------------
+This message was automatically generated in ${SECONDS}s
+"
+
+center "Task finished"

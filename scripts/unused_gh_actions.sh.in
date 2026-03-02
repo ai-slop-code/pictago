@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+###### script header ######
+
+lib=$(realpath @@BASE_LIB@@) || exit 1
+stat "${lib}" >> /dev/null || exit 1
+
+# shellcheck source=../bazel/shell/lib.bash
+if ! source "${lib}"; then
+  echo "Error: could not find import"
+  exit 1
+fi
+
+cd "${BUILD_WORKSPACE_DIRECTORY}" || exit 1
+
+###### script body ######
+
+# Find all action YAMLs. This action check if there are files within
+# .github/actions that are not used in any workflow or action YAML.
+# We only want directory of that exact level and ignore subdirectories.
+
+if [[ ! -d ".github/actions" ]]; then
+  echo ".github/actions directory does not exist. Exiting."
+  exit 0
+fi
+
+actionNames=$(
+  find .github/actions \
+    -maxdepth 2 \
+    -type d \
+    ! -name actions
+)
+
+actionYMLs=$(
+  find .github/actions \
+    ! -name actions \
+    -type f \
+    -name '*.yaml'
+)
+
+workflowYMLs=$(
+  find .github/workflows \
+    -type f \
+    -name '*.yaml'
+)
+
+exitcode=0
+
+for action in ${actionNames}; do
+  used=false
+
+  for yml in ${actionYMLs} ${workflowYMLs}; do
+    if grep -q "${action}" "${yml}"; then
+      used=true
+      break
+    fi
+  done
+
+  if [[ ${used} == "false" && ${action} != ".github/actions/artifact_download" ]]; then
+    echo "Action ${action} is unused"
+    exitcode=1
+  fi
+done
+
+exit "${exitcode}"

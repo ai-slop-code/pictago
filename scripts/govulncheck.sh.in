@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+###### script header ######
+
+lib=$(realpath @@BASE_LIB@@) || exit 1
+stat "${lib}" >> /dev/null || exit 1
+
+# shellcheck source=../bazel/shell/lib.bash
+if ! source "${lib}"; then
+  echo "Error: could not find import"
+  exit 1
+fi
+
+go=$(realpath @@GO@@)
+stat "${go}" >> /dev/null
+govulncheck=$(realpath @@GOVULNCHECK@@)
+stat "${govulncheck}" >> /dev/null
+jq=$(realpath @@JQ@@)
+stat "${jq}" >> /dev/null
+
+cd "${BUILD_WORKSPACE_DIRECTORY}" || exit 1
+
+###### script body ######
+
+submodules=$(${go} list -f '{{.Dir}}' -m)
+
+PATH=$(dirname "${go}"):${PATH}
+
+check_module() {
+  excluded_osvs=(
+    ""
+  )
+
+  # shellcheck disable=SC2016 # The $ sign in the single quoted string is correct.
+  CGO_ENABLED=0 ${govulncheck} -C "$1" -format json "./..." |
+    "${jq}" --argjson excluded "$(printf '"%s"\n' "${excluded_osvs[@]}" | jq -s)" -sr '
+        (map(select(.osv) | {"key": .osv.id, "value": .osv.summary}) | from_entries) as $osvs |
+        map(select( .finding and all($excluded[] != .finding.osv; .) ) | .finding | select( .trace[-1].module | startswith("github.com/edgelesssys/") )) |
+        group_by(.osv) |
+        map( {"osv": .[0].osv, "summary": $osvs[.[0].osv], "traces": [.[] | [.trace[] | .module]]} ) |
+        if length > 0 then halt_error(1) else .[] end'
+}
+
+check() {
+  err=0
+
+  echo "Scanning Go vulnerability DB for known vulnerabilities in modules:"
+  for mod in ${submodules}; do
+    printf "\t%s\n" "${mod}"
+    check_module "${mod}"
+  done
+
+  exit "${err}"
+
+}
+
+if [[ -n ${SILENT+x} ]]; then
+  check > /dev/null
+else
+  check
+fi

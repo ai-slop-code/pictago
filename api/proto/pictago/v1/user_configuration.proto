@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package pictago.v1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/ai-slop-code/pictago/api/proto/pictago/v1";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  security_definitions: {
+    security: {
+      key: "BearerAuth"
+      value: {
+        type: TYPE_API_KEY
+        in: IN_HEADER
+        name: "Authorization"
+        description: "JWT Bearer token. Format: 'Bearer <token>'"
+      }
+    }
+  }
+};
+
+service Configuration {
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/upload_limit"
+    };
+  }
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/upload_limit"
+      body: "*"
+    };
+  }
+
+  rpc GetApiKeys(GetApiKeysRequest) returns (GetApiKeysResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/api_keys"
+    };
+  }
+  rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/api_keys"
+      body: "*"
+    };
+  }
+
+  rpc DeleteApiKey(DeleteApiKeyRequest) returns (DeleteApiKeyResponse) {
+    option (google.api.http) = {
+      delete: "/v1/config/api_keys/{key_id}"
+    };
+  }
+}
+
+message GetConfigRequest {}
+
+message GetConfigResponse {
+  string max_upload_bytes = 1;
+}
+
+message UpdateConfigRequest {
+  string max_upload_bytes = 1;
+}
+
+message UpdateConfigResponse {
+  bool success = 1;
+}
+
+message GetApiKeysRequest {}
+
+message ApiKey {
+  string key_id = 1;
+  string api_key = 2;
+}
+
+message GetApiKeysResponse {
+  repeated ApiKey api_keys = 1;
+}
+
+message CreateApiKeyRequest {}
+
+message CreateApiKeyResponse {
+  ApiKey api_key = 1;
+}
+
+message DeleteApiKeyRequest {
+  string key_id = 1;
+}
+
+message DeleteApiKeyResponse {
+  bool success = 1;
+}

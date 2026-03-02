@@ -1,0 +1,8 @@
+# strip binaries for better reproducibility
+common --strip=always
+
+# set build mode to opt by default (better reproducibility and performance)
+common --compilation_mode=opt
+
+# use pure go implementation of netdns
+common --define=gotags=netgo

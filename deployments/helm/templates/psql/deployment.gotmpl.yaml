@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.longhorn.database.appName }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.longhorn.database.appName }}
+    spec:
+      containers:
+        - name: {{ $dbName := print .Values.longhorn.database.databaseName }}{{ $dbName }}
+          image: {{ .Values.longhorn.database.image }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.longhorn.database.databaseName }}
+          ports:
+            - containerPort: {{ .Values.longhorn.database.port }}
+          volumeMounts:
+            - name: {{ .Values.longhorn.database.volumes.mountName }}
+              mountPath: {{ .Values.longhorn.database.volumes.mountPath }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.longhorn.database.secretRef.name }}
+      volumes:
+        - name: {{ .Values.longhorn.database.volumes.mountName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.longhorn.database.volumes.claimName }}

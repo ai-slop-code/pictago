@@ -1,0 +1,25 @@
+# Import bazelrc presets
+import %workspace%/bazel/bazelrc/convenience.bazelrc
+import %workspace%/bazel/bazelrc/correctness.bazelrc
+import %workspace%/bazel/bazelrc/debug.bazelrc
+import %workspace%/bazel/bazelrc/performance.bazelrc
+import %workspace%/bazel/bazelrc/ci.bazelrc
+import %workspace%/bazel/bazelrc/cc.bazelrc
+import %workspace%/bazel/bazelrc/reproducibility.bazelrc
+
+# set registry flag alias
+build --flag_alias=container_prefix=//bazel/settings:container_prefix
+
+# set cli edition flag alias
+build --flag_alias=cli_edition=//bazel/settings:cli_edition
+
+# disable integration tests by default
+test --test_tag_filters=-integration
+
+# bazel configs to explicitly target a platform
+common:host --platforms @local_config_platform//:host
+
+# bazel config to explicitly disable stamping (hide version information at build time)
+common:nostamp --nostamp --workspace_status_command=
+
+try-import %workspace%/.bazeloverwriterc

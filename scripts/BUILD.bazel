@@ -1,0 +1,281 @@
+load("@buildifier_prebuilt//:rules.bzl", "buildifier")
+load("@gazelle//:def.bzl", "gazelle")
+load("@rules_multirun//:defs.bzl", "multirun")
+load("//bazel/shell:def.bzl", "noop_warn", "repo_command", "sh_template")
+load("//bazel/toolchains:go_bin_for_host.bzl", "go_bin_for_host")
+
+required_tags = [
+    "e2e",
+    "integration",
+]
+
+gazelle(
+    name = "gazelle_generate",
+    build_tags = required_tags,
+    visibility = ["//visibility:public"],
+)
+
+gazelle(
+    name = "gazelle_check",
+    build_tags = required_tags,
+    command = "fix",
+    mode = "diff",
+    visibility = ["//visibility:public"],
+)
+
+buildifier(
+    name = "buildifier_fix",
+    lint_mode = "fix",
+    lint_warnings = ["all"],
+    mode = "fix",
+    tags = ["no-remote-exec"],
+    verbose = True,
+)
+
+sh_template(
+    name = "keep_sorted",
+    data = [
+        "@com_github_google_keep_sorted//:keep-sorted",
+    ],
+    substitutions = {
+        "@@KEEP_SORTED@@": "$(rootpath @com_github_google_keep_sorted//:keep-sorted)",
+    },
+    template = "keep_sorted.sh.in",
+)
+
+sh_template(
+    name = "go_mod_tidy",
+    data = [
+        ":go_bin_for_host",
+    ],
+    substitutions = {
+        "@@GO@@": "$(rootpath :go_bin_for_host)",
+    },
+    template = "go_tidy.sh.in",
+)
+
+sh_template(
+    name = "shfmt",
+    data = [
+        "@com_github_katexochen_sh_v3//cmd/shfmt",
+    ],
+    substitutions = {
+        "@@SHFMT@@": "$(rootpath @com_github_katexochen_sh_v3//cmd/shfmt)",
+    },
+    template = "shfmt.sh.in",
+)
+
+noop_warn(
+    name = "shellcheck_noop_warning",
+    warning = "Shellcheck should have been executed, but is currently not available for your platform.",
+)
+
+alias(
+    name = "com_github_koalaman_shellcheck",
+    actual = select({
+        "@rules_go//go/platform:darwin_amd64": "@com_github_koalaman_shellcheck_darwin_amd64//:shellcheck",
+        "@rules_go//go/platform:darwin_arm64": "@com_github_koalaman_shellcheck_darwin_arm64//:shellcheck",
+        "@rules_go//go/platform:linux_amd64": "@com_github_koalaman_shellcheck_linux_amd64//:shellcheck",
+        "@rules_go//go/platform:linux_arm64": "@com_github_koalaman_shellcheck_linux_arm64//:shellcheck",
+    }),
+)
+
+sh_template(
+    name = "shellcheck",
+    data = [
+        ":com_github_koalaman_shellcheck",
+        "@com_github_katexochen_sh_v3//cmd/shfmt",
+    ],
+    substitutions = {
+        "@@SHELLCHECK@@": "$(rootpath :com_github_koalaman_shellcheck)",
+        "@@SHFMT@@": "$(rootpath @com_github_katexochen_sh_v3//cmd/shfmt)",
+    },
+    template = "shellcheck.sh.in",
+)
+
+alias(
+    name = "com_github_rhysd_actionlint",
+    actual = "@com_github_rhysd_actionlint//cmd/actionlint",
+)
+
+sh_template(
+    name = "actionlint",
+    data = [
+        ":com_github_koalaman_shellcheck",
+        ":com_github_rhysd_actionlint",
+    ],
+    substitutions = {
+        "@@ACTIONLINT@@": "$(rootpath :com_github_rhysd_actionlint)",
+        "@@SHELLCHECK@@": "$(rootpath :com_github_koalaman_shellcheck)",
+    },
+    template = "actionlint.sh.in",
+)
+
+repo_command(
+    name = "actionlint_no_shellcheck",
+    command = ":com_github_rhysd_actionlint",
+)
+
+alias(
+    name = "cc_mvdan_gofumpt",
+    actual = "@cc_mvdan_gofumpt//:gofumpt",
+)
+
+repo_command(
+    name = "gofumpt",
+    args = [
+        "-l",
+        "-w",
+        ".",
+    ],
+    command = ":cc_mvdan_gofumpt",
+)
+
+alias(
+    name = "com_github_golangci_golangci_lint_v2",
+    actual = "@com_github_golangci_golangci_lint_v2//cmd/golangci-lint",
+)
+
+sh_template(
+    name = "golangci_lint",
+    data = [
+        ":com_github_golangci_golangci_lint_v2",
+        ":go_bin_for_host",
+    ],
+    substitutions = {
+        "@@GO@@": "$(rootpath :go_bin_for_host)",
+        "@@GOLANGCI-LINT@@": "$(rootpath :com_github_golangci_golangci_lint_v2)",
+    },
+    template = "golangci_lint.sh.in",
+)
+
+sh_template(
+    name = "govulncheck",
+    data = [
+        ":go_bin_for_host",
+        "@jq_toolchains//:resolved_toolchain",
+        "@org_golang_x_vuln//cmd/govulncheck",
+    ],
+    substitutions = {
+        "@@GO@@": "$(rootpath :go_bin_for_host)",
+        "@@GOVULNCHECK@@": "$(rootpath @org_golang_x_vuln//cmd/govulncheck:govulncheck)",
+        "@@JQ@@": "$(rootpath @jq_toolchains//:resolved_toolchain)",
+    },
+    template = "govulncheck.sh.in",
+)
+
+sh_template(
+    name = "cli_docgen",
+    data = [
+        "//hack/clidocgen",
+    ],
+    substitutions = {
+        "@@CLIDOCGEN@@": "$(rootpath //hack/clidocgen:clidocgen)",
+    },
+    template = "cli_docgen.sh.in",
+)
+
+sh_template(
+    name = "unused_gh_actions",
+    data = [],
+    substitutions = {},
+    template = "unused_gh_actions.sh.in",
+)
+
+go_bin_for_host(
+    name = "go_bin_for_host",
+    visibility = ["//visibility:private"],
+)
+
+sh_template(
+    name = "go_generate",
+    data = [
+        ":go_bin_for_host",
+        "@org_golang_x_tools//cmd/stringer",
+        "@yq_toolchains//:resolved_toolchain",
+    ],
+    substitutions = {
+        "@@GO@@": "$(rootpath :go_bin_for_host)",
+        "@@STRINGER@@": "$(rootpath @org_golang_x_tools//cmd/stringer:stringer)",
+        "@@YQ@@": "$(rootpath @yq_toolchains//:resolved_toolchain)",
+    },
+    template = "go_generate.sh.in",
+)
+
+sh_template(
+    name = "entrypoint",
+    data = [],
+    substitutions = {},
+    template = "entrypoint.sh.in",
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "tidy",
+    commands = [
+        ":shfmt",
+        ":gofumpt",
+        ":go_mod_tidy",
+        ":gazelle_generate",
+        #":buildifier_fix",
+        ":keep_sorted",
+    ],
+    jobs = 1,  # execute sequentially
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "parallel_checks",
+    testonly = True,
+    commands = [
+        ":gazelle_check",
+        ":unused_gh_actions",
+    ] + select({
+        "//conditions:default": [
+            ":shellcheck",
+            ":actionlint",
+        ],
+    }),
+    jobs = 0,  # execute concurrently
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "check",
+    testonly = True,
+    commands = [
+        ":parallel_checks",
+        ":golangci_lint",
+        ":govulncheck",
+    ],
+    jobs = 1,  # execute sequentially
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "generate_files",
+    commands = [
+        ":go_generate",
+    ],
+    jobs = 0,  # execute concurrently
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "generate_docs",
+    commands = [
+        ":cli_docgen",
+    ],
+    jobs = 0,  # execute concurrently
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "generate",
+    commands = [
+        ":generate_files",
+        ":generate_docs",
+    ],
+    jobs = 1,  # execute sequentially
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+###### script header ######
+
+lib=$(realpath @@BASE_LIB@@) || exit 1
+stat "${lib}" >> /dev/null || exit 1
+
+# shellcheck source=../bazel/shell/lib.bash
+if ! source "${lib}"; then
+  echo "Error: could not find import"
+  exit 1
+fi
+
+shfmt=$(realpath @@SHFMT@@)
+stat "${shfmt}" >> /dev/null
+
+cd "${BUILD_WORKSPACE_DIRECTORY}" || exit 1
+
+###### script body ######
+
+scriptsStr=$(${shfmt} -f "${BUILD_WORKSPACE_DIRECTORY}")
+scripts=()
+while IFS= read -r line; do
+  scripts+=("$line")
+done <<< "${scriptsStr}"
+
+excludeDirs=(
+  "build"
+  "docs/node_modules"
+)
+
+echo "The following scripts are excluded and won't be formatted with shfmt:"
+for exclude in "${excludeDirs[@]}"; do
+  for i in "${!scripts[@]}"; do
+    if [[ ${scripts[i]} == "${BUILD_WORKSPACE_DIRECTORY}/${exclude}"* ]]; then
+      printf "\t%s\n" "${scripts[i]}"
+      unset 'scripts[i]'
+    fi
+  done
+done
+
+echo "Formatting the following scripts with shfmt:"
+for script in "${scripts[@]}"; do
+  printf "\t%s\n" "${script}"
+done
+
+${shfmt} -i 2 -s -w -sr "${scripts[@]}"

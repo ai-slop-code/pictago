@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "migrations",
+    srcs = ["loader.go"],
+    embedsrcs = ["01-create-table.migration.sql"],
+    importpath = "github.com/ai-slop-code/pictago/cmd/pictago_db_migrations/migrations",
+    visibility = ["//visibility:public"],
+)

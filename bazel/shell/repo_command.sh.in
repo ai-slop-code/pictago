@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+lib=$(realpath @@BASE_LIB@@) || exit 1
+cmd=$(realpath @@CMD@@) || exit 1
+
+declare -a args=@@ARGS@@
+
+# shellcheck source=lib.bash
+if ! source "${lib}"; then
+  echo "Error: could not find import"
+  exit 1
+fi
+
+if [[ -n ${BUILD_WORKSPACE_DIRECTORY:-} ]]; then
+  cd "${BUILD_WORKSPACE_DIRECTORY}" || exit 1
+fi
+
+if ((${#args[@]})); then
+  "${cmd}" "${args[@]}" "$@"
+else
+  "${cmd}" "$@"
+fi

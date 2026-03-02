@@ -1,0 +1,32 @@
+# Ignore version control
+.git
+.hg
+.svn
+
+# Ignore IDE and editor configs
+.vscode
+.idea
+
+# Ignore Bazel output directories
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-bin  # catches workspace symlinks Bazel creates
+bazel-out  # catches workspace symlinks Bazel creates
+bazel-testlogs  # catches workspace symlinks Bazel creates
+bazel-time-to-sla-provider  # catches workspace symlinks Bazel creates
+
+# Ignore Go module cache or build artifacts
+vendor
+bin
+dist
+out
+build
+
+# Ignore coverage or test output
+coverage
+testdata/tmp
+
+# Ignore generated files (if not managed by Bazel)
+gen
+.tmp
