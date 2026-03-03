@@ -36,6 +36,9 @@ func New(opts ...Option) *slog.Logger {
 			ecslog.WithSource(config.addSource),
 		),
 		true,
+	)).With(slog.Group(
+		"labels",
+		slog.String("serviceName", "pictago"),
 	))
 	if err != nil {
 		logger.WarnContext(context.Background(), "invalid log level string",
