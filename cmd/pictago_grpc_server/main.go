@@ -57,23 +57,27 @@ func startServer(cfg config.Config) error {
 	return server.Serve(lis)
 }
 
-func main() {
-	if err := loadServerConfig(assets.ConfigFileName); err != nil {
-		panic(err)
+func run(configFileName string, logger log.Logger) error {
+	if err := loadServerConfig(configFileName); err != nil {
+		return err
 	}
 
 	cfg := config.GetConfig()
-
-	// Initialize logger
-	logger := log.NewDefaultLogger()
 	logger.Info(
 		"Starting gRPC server",
 		"grpcHost", cfg.GrpcServer.Host,
 		"grpcPort", cfg.GrpcServer.Port,
 	)
-
-	// Start gRPC server
 	if err := startServer(*cfg); err != nil {
-		logger.Error("Server exited with error", "error", err)
+		return err
+	}
+	return nil
+}
+
+func main() {
+	logger := log.NewDefaultLogger()
+	if err := run(assets.ConfigFileName, logger); err != nil {
+		logger.Error("Failed to start gRPC server", "error", err)
+		panic(err)
 	}
 }
