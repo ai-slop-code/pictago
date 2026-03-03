@@ -7,8 +7,9 @@ port = 8080
 host = "localhost"
 
 [database]
-host = 5432
+port = 5432
 host = "localhost"
 username = "!secret"
 password = "!secret"
 migrations_dir = "migrations"
+driver = "postgres"

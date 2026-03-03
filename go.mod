@@ -14,6 +14,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/jackc/pgx/v5 v5.5.4
+	github.com/oidq/ecslog v0.1.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/trace v1.39.0

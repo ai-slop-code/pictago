@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/oidq/ecslog"
 )
 
 func New(opts ...Option) *slog.Logger {
@@ -28,16 +29,14 @@ func New(opts ...Option) *slog.Logger {
 		err = logLevel.UnmarshalText([]byte(config.level))
 	}
 
-	logger := slog.New(
-		NewSpanContextHandler(
-			slog.NewJSONHandler(config.writer, &slog.HandlerOptions{
-				AddSource: config.addSource,
-				Level:     logLevel,
-			}),
-			true,
+	logger := slog.New(NewSpanContextHandler(
+		ecslog.NewHandler(
+			config.writer,
+			ecslog.WithLogLevel(logLevel),
+			ecslog.WithSource(config.addSource),
 		),
-	)
-
+		true,
+	))
 	if err != nil {
 		logger.WarnContext(context.Background(), "invalid log level string",
 			slog.String("input_level", config.level),

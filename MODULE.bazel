@@ -64,6 +64,7 @@ use_repo(
     "com_github_grpc_ecosystem_go_grpc_middleware_v2",
     "com_github_jackc_pgx_v5",
     "com_github_katexochen_sh_v3",
+    "com_github_oidq_ecslog",
     "com_github_rhysd_actionlint",
     "com_github_spf13_viper",
     "com_github_stretchr_testify",
