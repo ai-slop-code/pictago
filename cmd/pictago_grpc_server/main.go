@@ -45,9 +45,7 @@ func startServer(cfg config.Config) error {
 	defer lis.Close()
 
 	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			logging.UnaryServerInterceptor(&logger),
-		),
+		grpc.ChainUnaryInterceptor(logging.UnaryServerInterceptor(&logger)),
 	)
 
 	registerServers(server)
