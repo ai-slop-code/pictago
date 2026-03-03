@@ -5,5 +5,8 @@ go_library(
     srcs = ["server.go"],
     importpath = "github.com/ai-slop-code/pictago/pkg/user_management",
     visibility = ["//visibility:public"],
-    deps = ["//api/proto/pictago/v1:v1_grpc_gateway"],
+    deps = [
+        "//api/proto/pictago/v1:v1_grpc_gateway",
+        "//internal/user",
+    ],
 )

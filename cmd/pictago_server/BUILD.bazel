@@ -1,41 +1,31 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "server_lib",
-    srcs = ["main.go"],
-    importpath = "github.com/ai-slop-code/pictago/cmd/server",
-    visibility = ["//visibility:private"],
-)
-
-go_binary(
-    name = "server",
-    embed = [":pictago_grpc_server_lib"],
-    visibility = ["//visibility:public"],
-)
-
-go_library(
     name = "pictago_server_lib",
     srcs = ["main.go"],
     importpath = "github.com/ai-slop-code/pictago/cmd/pictago_server",
-    visibility = ["//visibility:private"],
-)
-
-go_library(
-    name = "pictago_grpc_server_lib",
-    srcs = ["main.go"],
-    importpath = "github.com/ai-slop-code/pictago/cmd/pictago_grpc_server",
     visibility = ["//visibility:private"],
     deps = [
         "//api/proto/pictago/v1:v1_grpc_gateway",
         "//assets",
         "//internal/config",
         "//internal/log",
+        "//internal/user",
         "//pkg/authentication",
         "//pkg/file",
         "//pkg/user_configuration",
         "//pkg/user_info",
         "//pkg/user_management",
         "@com_github_grpc_ecosystem_go_grpc_middleware_v2//interceptors/logging",
+        "@com_github_jmoiron_sqlx//:sqlx",
+        "@grpc_ecosystem_grpc_gateway//runtime",
         "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
     ],
+)
+
+go_binary(
+    name = "pictago_server",
+    embed = [":pictago_server_lib"],
+    visibility = ["//visibility:public"],
 )

@@ -24,7 +24,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 service Authentication {
   rpc Login(LoginRequest) returns (LoginResponse) {
     option (google.api.http) = {
-      post: "/v1/login"
+      post: "/v1/authentication/login"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -33,7 +33,7 @@ service Authentication {
   }
   rpc Logout(LogoutRequest) returns (LogoutResponse) {
     option (google.api.http) = {
-      post: "/v1/logout"
+      post: "/v1/authentication/logout"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -45,9 +45,17 @@ service Authentication {
       }
     };
   }
+
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/authentication/validate_token"
+      body: "*"
+    };
+  }
+
   rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
     option (google.api.http) = {
-      put: "/v1/change_password"
+      put: "/v1/authentication/change_password"
       body: "*"
     };
   }
@@ -79,4 +87,17 @@ message ChangePasswordRequest {
 
 message ChangePasswordResponse {
   bool success = 1;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  string iat = 1;
+  string iss = 2;
+  string sub = 3;
+  string aud = 4;
+  string exp = 5;
+  repeated string permissions = 6;
 }

@@ -16,6 +16,7 @@ proto_library(
     deps = [
         "@googleapis//google/api:annotations_proto",
         "@grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 
@@ -49,11 +50,11 @@ go_library(
 
 go_library(
     name = "v1_grpc_gateway",
-    srcs = ["//api/proto/pictago/v1:v1_gateway_grpc"],
+    srcs = [":v1_gateway_grpc"],
     importpath = "github.com/ai-slop-code/pictago/internal/proto/v1/grpc/gateway",
     visibility = ["//visibility:public"],
     deps = [
-        "//api/proto/pictago/v1:v1_go_proto",
+        ":v1_go_proto",
         "@googleapis//google/api:annotations_go_proto",
         "@grpc_ecosystem_grpc_gateway//protoc-gen-openapiv2/options:options_go_proto",
         "@grpc_ecosystem_grpc_gateway//runtime:go_default_library",
@@ -66,5 +67,6 @@ go_library(
         "@org_golang_google_protobuf//proto:go_default_library",
         "@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
         "@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
+        "@org_golang_google_protobuf//types/known/timestamppb:go_default_library",
     ],
 )

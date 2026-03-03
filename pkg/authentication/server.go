@@ -25,6 +25,11 @@ func (s *server) ChangePassword(context.Context, *pb.ChangePasswordRequest) (*pb
 	return &res, nil
 }
 
+func (s *server) ValidateToken(context.Context, *pb.ValidateTokenRequest) (*pb.ValidateTokenResponse, error) {
+	res := pb.ValidateTokenResponse{}
+	return &res, nil
+}
+
 var _ pb.AuthenticationServer = &server{}
 
 func NewAuthenticationServer() pb.AuthenticationServer {
