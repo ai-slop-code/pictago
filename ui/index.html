@@ -125,6 +125,9 @@
     .file-list a { color: var(--accent); text-decoration: none; word-break: break-all; font-size: 0.9rem; }
     .file-list a:hover { text-decoration: underline; }
     .file-list .size { font-size: 0.8rem; color: var(--text-muted); flex-shrink: 0; }
+    .file-list .file-thumb { flex-shrink: 0; width: 56px; height: 56px; border-radius: 6px; overflow: hidden; background: var(--border); }
+    .file-list .thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .file-list .thumb-placeholder { display: block; width: 100%; height: 100%; background: var(--border); }
     .file-list .file-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
     .file-list .file-collection { font-size: 0.8rem; color: var(--text-muted); background: var(--border); padding: 0.15rem 0.4rem; border-radius: 4px; }
     .file-list .file-filename { font-weight: 500; }
@@ -226,6 +229,10 @@
         <p class="loading" v-if="filesLoading">Loading…</p>
         <ul class="file-list" v-else-if="filteredFiles.length">
           <li v-for="f in filteredFiles" :key="f.id">
+            <span class="file-thumb">
+              <img v-if="f.thumbnail_url" :src="f.thumbnail_url" alt="" class="thumb-img" loading="lazy">
+              <span v-else class="thumb-placeholder"></span>
+            </span>
             <span class="file-info">
               <span class="file-collection">{{ f.collection }}</span>
               <span class="file-filename">{{ f.filename || f.path }}</span>

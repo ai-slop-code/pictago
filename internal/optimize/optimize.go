@@ -3,37 +3,41 @@ package optimize
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"image/jpeg"
-	"io"
+	"math"
 	"net/http"
 
 	_ "image/gif"
+	_ "image/png"
+
+	_ "golang.org/x/image/webp"
 )
 
 const (
-	maxDimension = 1920
-	jpegQuality  = 88
+	maxDimension   = 1920
+	thumbDimension = 200
+	jpegQuality    = 88
+	thumbQuality   = 80
 )
 
+var errDecode = errors.New("image decode failed")
+var errEncode = errors.New("image encode failed")
+
 // Image optimizes the image bytes: resizes so the longest side is maxDimension
-// and re-encodes as JPEG for smaller size. If decoding or encoding fails, returns nil, nil, false.
-func Image(data []byte, contentType string) (out []byte, newContentType string, ok bool) {
+// and re-encodes as JPEG. Returns (nil, "", err) on failure.
+// If the image is already JPEG and within max dimension, returns it as-is without re-encoding.
+func Image(data []byte) (out []byte, newContentType string, err error) {
 	img, fmtName, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, "", false
+		return nil, "", errDecode
 	}
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	if w <= maxDimension && h <= maxDimension && fmtName == "jpeg" {
-		// already small enough and JPEG — optional: re-encode at lower quality
-		var buf bytes.Buffer
-		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: jpegQuality}); err != nil {
-			return nil, "", false
-		}
-		return buf.Bytes(), "image/jpeg", true
+	if fmtName == "jpeg" && w <= maxDimension && h <= maxDimension {
+		return data, "image/jpeg", nil
 	}
-	// resize if needed
 	if w > maxDimension || h > maxDimension {
 		img = resize(img, w, h, maxDimension)
 		bounds = img.Bounds()
@@ -41,19 +45,15 @@ func Image(data []byte, contentType string) (out []byte, newContentType string, 
 	}
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: jpegQuality}); err != nil {
-		return nil, "", false
+		return nil, "", errEncode
 	}
-	return buf.Bytes(), "image/jpeg", true
+	return buf.Bytes(), "image/jpeg", nil
 }
 
 func resize(src image.Image, w, h, max int) image.Image {
-	scale := 1.0
-	if w > max || h > max {
-		if w > h {
-			scale = float64(max) / float64(w)
-		} else {
-			scale = float64(max) / float64(h)
-		}
+	scale := math.Min(float64(max)/float64(w), float64(max)/float64(h))
+	if scale >= 1 {
+		return src
 	}
 	newW := int(float64(w) * scale)
 	newH := int(float64(h) * scale)
@@ -80,29 +80,26 @@ func resize(src image.Image, w, h, max int) image.Image {
 	return dst
 }
 
-// OptimizeIfRequested reads the multipart file, and if contentType is an image and optimize is true,
-// returns optimized bytes and new content type. Otherwise returns the original read and false for optimized.
-func OptimizeIfRequested(r io.Reader, contentType string, optimize bool) (data []byte, outContentType string, optimized bool) {
-	data, err := io.ReadAll(r)
+// Thumbnail generates a small JPEG thumbnail (longest side maxPx). Returns nil, err on failure.
+func Thumbnail(data []byte, maxPx int) ([]byte, error) {
+	if maxPx < 1 {
+		maxPx = thumbDimension
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil, "", false
+		return nil, errDecode
 	}
-	outContentType = contentType
-	if !optimize {
-		return data, outContentType, false
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	if w > maxPx || h > maxPx {
+		img = resize(img, w, h, maxPx)
+		bounds = img.Bounds()
 	}
-	// only optimize known image types
-	switch contentType {
-	case "image/jpeg", "image/png", "image/gif":
-		break
-	default:
-		return data, outContentType, false
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: thumbQuality}); err != nil {
+		return nil, errEncode
 	}
-	optimizedData, newCT, ok := Image(data, contentType)
-	if !ok {
-		return data, outContentType, false
-	}
-	return optimizedData, newCT, true
+	return buf.Bytes(), nil
 }
 
 // SniffContentType returns the content type from the first bytes (e.g. from multipart).

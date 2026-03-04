@@ -11,15 +11,23 @@ import (
 	"unicode"
 )
 
-type Store struct {
+// Store is the interface for file storage. *store implements it.
+type Store interface {
+	SaveInCollection(userID int64, collection, filename string, data []byte) (relativePath string, err error)
+	Delete(relativePath string) error
+	DeleteDirectory(relativeDir string) error
+	Root() string
+}
+
+type store struct {
 	root string
 }
 
-func New(root string) (*Store, error) {
+func New(root string) (Store, error) {
 	if err := os.MkdirAll(root, 0755); err != nil {
 		return nil, err
 	}
-	return &Store{root: root}, nil
+	return &store{root: root}, nil
 }
 
 // safeFilename strips path components, null bytes, and restricts to printable ASCII suitable for URLs.
@@ -50,7 +58,7 @@ func safeFilename(filename string) string {
 }
 
 // Save writes the reader to root/filename and returns the public path (e.g. /files/abc.jpg).
-func (s *Store) Save(filename string, r io.Reader) (path string, err error) {
+func (s *store) Save(filename string, r io.Reader) (path string, err error) {
 	name := safeFilename(filename)
 	if name == "" {
 		name = "file"
@@ -84,7 +92,7 @@ func (s *Store) Save(filename string, r io.Reader) (path string, err error) {
 }
 
 // SaveBytes is a convenience for saving a byte slice (e.g. after optimization).
-func (s *Store) SaveBytes(filename string, data []byte) (path string, err error) {
+func (s *store) SaveBytes(filename string, data []byte) (path string, err error) {
 	return s.Save(filename, &byteReader{data: data})
 }
 
@@ -96,7 +104,7 @@ func safeCollectionName(name string) string {
 	}
 	var b strings.Builder
 	for _, r := range name {
-		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' {
 			b.WriteRune(r)
 		}
 	}
@@ -108,7 +116,7 @@ func safeCollectionName(name string) string {
 }
 
 // SaveInCollection saves data under root/userID/collection/filename and returns the relative path (e.g. "1/my-collection/foo.jpg").
-func (s *Store) SaveInCollection(userID int64, collection, filename string, data []byte) (relativePath string, err error) {
+func (s *store) SaveInCollection(userID int64, collection, filename string, data []byte) (relativePath string, err error) {
 	col := safeCollectionName(collection)
 	name := safeFilename(filename)
 	if name == "" {
@@ -154,7 +162,7 @@ func (b *byteReader) Read(p []byte) (n int, err error) {
 }
 
 // List returns all filenames in the store (for building direct links).
-func (s *Store) List() ([]string, error) {
+func (s *store) List() ([]string, error) {
 	entries, err := os.ReadDir(s.root)
 	if err != nil {
 		return nil, err
@@ -171,12 +179,12 @@ func (s *Store) List() ([]string, error) {
 }
 
 // Root returns the filesystem root path (for serving static files).
-func (s *Store) Root() string {
+func (s *store) Root() string {
 	return s.root
 }
 
 // Delete removes the file at relativePath (e.g. "userID/collection/filename") from the store.
-func (s *Store) Delete(relativePath string) error {
+func (s *store) Delete(relativePath string) error {
 	if relativePath == "" || strings.Contains(relativePath, "..") {
 		return os.ErrInvalid
 	}
@@ -185,7 +193,7 @@ func (s *Store) Delete(relativePath string) error {
 }
 
 // DeleteDirectory removes the directory at relativeDir (e.g. "userID/collection") and all its contents.
-func (s *Store) DeleteDirectory(relativeDir string) error {
+func (s *store) DeleteDirectory(relativeDir string) error {
 	if relativeDir == "" || strings.Contains(relativeDir, "..") {
 		return os.ErrInvalid
 	}

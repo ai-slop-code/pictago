@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **APM (OpenTelemetry)**: optional tracing via OTLP; set `OTEL_EXPORTER_OTLP_ENDPOINT` (e.g. `http://localhost:8200` for Elastic APM Server) to send HTTP request spans. `OTEL_SERVICE_NAME` defaults to `pictago`. Disabled when endpoint is unset.
 - **Audit log**: all actions (user create/login/logout, file upload/delete, public file access, API key create/delete, password change, admin user/collection delete) are logged in ECS (Elastic Common Schema) format to a configurable file (`AUDIT_LOG_PATH`, default `./data/audit.json`). One JSON object per line; suitable for ingestion into Elasticsearch or other ECS-compatible tools.
 
 ## [0.1.0] - 2025-03-01

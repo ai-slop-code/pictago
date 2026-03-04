@@ -30,7 +30,33 @@ type contextKey string
 
 const ContextKeyUsername contextKey = "username"
 
-type Store struct {
+// Store is the interface for user/session/API key and upload metadata storage. *store implements it.
+type Store interface {
+	CreateUser(ctx context.Context, username, password string) error
+	ValidateUser(ctx context.Context, username, password string) (bool, error)
+	GetUserID(ctx context.Context, username string) (int64, error)
+	GetUsernameByID(ctx context.Context, userID int64) (string, error)
+	RecordUpload(ctx context.Context, userID int64, path string, sizeBytes int64) error
+	ListUploads(ctx context.Context, userID int64) ([]UploadRecord, error)
+	GetStats(ctx context.Context, userID int64) (UserStats, error)
+	DeleteUpload(ctx context.Context, uploadID, userID int64) (relativePath string, err error)
+	DeleteUser(ctx context.Context, id int64) error
+	DeleteCollection(ctx context.Context, userID int64, collectionName string) (relativePaths []string, err error)
+	ListUsersWithStats(ctx context.Context) ([]User, error)
+	UpdatePassword(ctx context.Context, username, newPassword string) error
+	CreateSession(ctx context.Context, userID int64) (token string, err error)
+	LookupSession(ctx context.Context, token string) (userID int64, err error)
+	DeleteSession(ctx context.Context, token string) error
+	CreateAPIKey(ctx context.Context, userID int64, name string) (key string, err error)
+	ValidateAPIKey(ctx context.Context, rawKey string) (userID int64, err error)
+	ListAPIKeys(ctx context.Context, userID int64) ([]APIKey, error)
+	DeleteAPIKey(ctx context.Context, keyID, userID int64) error
+	Close() error
+}
+
+var _ Store = (*store)(nil)
+
+type store struct {
 	db *sql.DB
 }
 
@@ -69,7 +95,7 @@ type APIKey struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func NewStore(dbPath string) (*Store, error) {
+func NewStore(dbPath string) (Store, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
@@ -77,14 +103,14 @@ func NewStore(dbPath string) (*Store, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-	s := &Store{db: db}
+	s := &store{db: db}
 	if err := s.migrate(); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s *Store) migrate() error {
+func (s *store) migrate() error {
 	ctx := context.Background()
 	if _, err := s.db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS users (
@@ -138,7 +164,7 @@ func (s *Store) migrate() error {
 }
 
 // migrateRandomizeUserID1 reassigns user id 1 to a random ID so the first user is not predictable.
-func (s *Store) migrateRandomizeUserID1(ctx context.Context) error {
+func (s *store) migrateRandomizeUserID1(ctx context.Context) error {
 	var exists int
 	if err := s.db.QueryRowContext(ctx, `SELECT 1 FROM users WHERE id = 1 LIMIT 1`).Scan(&exists); err != nil {
 		if err == sql.ErrNoRows {
@@ -184,7 +210,7 @@ func randomUserID() (int64, error) {
 	return int64(u), nil
 }
 
-func (s *Store) CreateUser(ctx context.Context, username, password string) error {
+func (s *store) CreateUser(ctx context.Context, username, password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
 		return err
@@ -206,7 +232,7 @@ func (s *Store) CreateUser(ctx context.Context, username, password string) error
 	return sql.ErrNoRows
 }
 
-func (s *Store) ValidateUser(ctx context.Context, username, password string) (bool, error) {
+func (s *store) ValidateUser(ctx context.Context, username, password string) (bool, error) {
 	var hash string
 	err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM users WHERE username = ?`, username).Scan(&hash)
 	if err == sql.ErrNoRows {
@@ -219,11 +245,11 @@ func (s *Store) ValidateUser(ctx context.Context, username, password string) (bo
 	return err == nil, nil
 }
 
-func (s *Store) Close() error {
+func (s *store) Close() error {
 	return s.db.Close()
 }
 
-func (s *Store) GetUserID(ctx context.Context, username string) (int64, error) {
+func (s *store) GetUserID(ctx context.Context, username string) (int64, error) {
 	var id int64
 	err := s.db.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, username).Scan(&id)
 	return id, err
@@ -237,7 +263,7 @@ func collectionFromPath(path string) string {
 	return "default"
 }
 
-func (s *Store) RecordUpload(ctx context.Context, userID int64, path string, sizeBytes int64) error {
+func (s *store) RecordUpload(ctx context.Context, userID int64, path string, sizeBytes int64) error {
 	filename := path
 	if idx := strings.LastIndex(path, "/"); idx >= 0 {
 		filename = path[idx+1:]
@@ -247,7 +273,7 @@ func (s *Store) RecordUpload(ctx context.Context, userID int64, path string, siz
 	return err
 }
 
-func (s *Store) ListUploads(ctx context.Context, userID int64) ([]UploadRecord, error) {
+func (s *store) ListUploads(ctx context.Context, userID int64) ([]UploadRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, COALESCE(path, filename) AS path, size_bytes, COALESCE(collection, '') FROM uploads WHERE user_id = ? ORDER BY created_at DESC`, userID)
 	if err != nil {
 		return nil, err
@@ -273,7 +299,7 @@ func (s *Store) ListUploads(ctx context.Context, userID int64) ([]UploadRecord, 
 	return out, rows.Err()
 }
 
-func (s *Store) GetStats(ctx context.Context, userID int64) (UserStats, error) {
+func (s *store) GetStats(ctx context.Context, userID int64) (UserStats, error) {
 	var st UserStats
 	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM uploads WHERE user_id = ?`, userID).Scan(&st.FileCount, &st.TotalSize)
 	if err != nil {
@@ -301,7 +327,7 @@ func (s *Store) GetStats(ctx context.Context, userID int64) (UserStats, error) {
 // DeleteCollection deletes all uploads for the given user and collection (normalized:
 // trim, empty becomes "default"). It returns the relative paths of deleted files so the
 // caller can remove them from the file store.
-func (s *Store) DeleteCollection(ctx context.Context, userID int64, collectionName string) (relativePaths []string, err error) {
+func (s *store) DeleteCollection(ctx context.Context, userID int64, collectionName string) (relativePaths []string, err error) {
 	col := strings.TrimSpace(collectionName)
 	if col == "" {
 		col = "default"
@@ -331,7 +357,7 @@ func (s *Store) DeleteCollection(ctx context.Context, userID int64, collectionNa
 	return paths, nil
 }
 
-func (s *Store) ListUsersWithStats(ctx context.Context) ([]User, error) {
+func (s *store) ListUsersWithStats(ctx context.Context) ([]User, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT u.id, u.username, COALESCE(COUNT(up.id), 0), COALESCE(SUM(up.size_bytes), 0)
 		FROM users u LEFT JOIN uploads up ON u.id = up.user_id
@@ -352,7 +378,7 @@ func (s *Store) ListUsersWithStats(ctx context.Context) ([]User, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) DeleteUser(ctx context.Context, id int64) error {
+func (s *store) DeleteUser(ctx context.Context, id int64) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM uploads WHERE user_id = ?`, id); err != nil {
 		return err
 	}
@@ -366,7 +392,7 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return err
 }
 
-func (s *Store) UpdatePassword(ctx context.Context, username, newPassword string) error {
+func (s *store) UpdatePassword(ctx context.Context, username, newPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), cost)
 	if err != nil {
 		return err
@@ -375,7 +401,7 @@ func (s *Store) UpdatePassword(ctx context.Context, username, newPassword string
 	return err
 }
 
-func (s *Store) DeleteUpload(ctx context.Context, uploadID, userID int64) (relativePath string, err error) {
+func (s *store) DeleteUpload(ctx context.Context, uploadID, userID int64) (relativePath string, err error) {
 	var path string
 	err = s.db.QueryRowContext(ctx, `SELECT path FROM uploads WHERE id = ? AND user_id = ?`, uploadID, userID).Scan(&path)
 	if err != nil {
@@ -391,13 +417,13 @@ func (s *Store) DeleteUpload(ctx context.Context, uploadID, userID int64) (relat
 	return path, nil
 }
 
-func (s *Store) GetUsernameByID(ctx context.Context, userID int64) (string, error) {
+func (s *store) GetUsernameByID(ctx context.Context, userID int64) (string, error) {
 	var name string
 	err := s.db.QueryRowContext(ctx, `SELECT username FROM users WHERE id = ?`, userID).Scan(&name)
 	return name, err
 }
 
-func (s *Store) CreateSession(ctx context.Context, userID int64) (token string, err error) {
+func (s *store) CreateSession(ctx context.Context, userID int64) (token string, err error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
@@ -409,7 +435,7 @@ func (s *Store) CreateSession(ctx context.Context, userID int64) (token string, 
 	return token, err
 }
 
-func (s *Store) LookupSession(ctx context.Context, token string) (userID int64, err error) {
+func (s *store) LookupSession(ctx context.Context, token string) (userID int64, err error) {
 	var exp string
 	err = s.db.QueryRowContext(ctx, `SELECT user_id, expires_at FROM sessions WHERE token = ?`, token).Scan(&userID, &exp)
 	if err != nil {
@@ -423,12 +449,12 @@ func (s *Store) LookupSession(ctx context.Context, token string) (userID int64, 
 	return userID, nil
 }
 
-func (s *Store) DeleteSession(ctx context.Context, token string) error {
+func (s *store) DeleteSession(ctx context.Context, token string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token = ?`, token)
 	return err
 }
 
-func (s *Store) CreateAPIKey(ctx context.Context, userID int64, name string) (key string, err error) {
+func (s *store) CreateAPIKey(ctx context.Context, userID int64, name string) (key string, err error) {
 	b := make([]byte, 24)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
@@ -447,7 +473,7 @@ func (s *Store) CreateAPIKey(ctx context.Context, userID int64, name string) (ke
 	return raw, nil
 }
 
-func (s *Store) ValidateAPIKey(ctx context.Context, rawKey string) (userID int64, err error) {
+func (s *store) ValidateAPIKey(ctx context.Context, rawKey string) (userID int64, err error) {
 	if !strings.HasPrefix(rawKey, apiKeyPrefix) {
 		return 0, sql.ErrNoRows
 	}
@@ -457,7 +483,7 @@ func (s *Store) ValidateAPIKey(ctx context.Context, rawKey string) (userID int64
 	return userID, err
 }
 
-func (s *Store) ListAPIKeys(ctx context.Context, userID int64) ([]APIKey, error) {
+func (s *store) ListAPIKeys(ctx context.Context, userID int64) ([]APIKey, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, name, key_prefix, created_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC`, userID)
 	if err != nil {
 		return nil, err
@@ -476,7 +502,7 @@ func (s *Store) ListAPIKeys(ctx context.Context, userID int64) ([]APIKey, error)
 	return out, rows.Err()
 }
 
-func (s *Store) DeleteAPIKey(ctx context.Context, keyID, userID int64) error {
+func (s *store) DeleteAPIKey(ctx context.Context, keyID, userID int64) error {
 	result, err := s.db.ExecContext(ctx, `DELETE FROM api_keys WHERE id = ? AND user_id = ?`, keyID, userID)
 	if err != nil {
 		return err
@@ -489,7 +515,7 @@ func (s *Store) DeleteAPIKey(ctx context.Context, keyID, userID int64) error {
 }
 
 // Middleware checks session cookie or API key; sets username in context or returns 401.
-func Middleware(store *Store) func(http.Handler) http.Handler {
+func Middleware(store Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()

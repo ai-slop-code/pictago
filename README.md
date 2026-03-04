@@ -11,20 +11,25 @@
 - **User management** (admin only): list users with stats, create/delete users, expand per-user collections and delete a collection (and all its files). Non-admin users cannot access user management. Change own password.
 - **Sessions**: login at `/login`; session stored in DB and cookie. **Log out** at `/logout` clears the session and cookie.
 - **API keys**: create keys in the UI (API keys tab); use header `X-API-Key: <key>` or `Authorization: Bearer <key>` to call the API without the UI.
-- **Direct links** listed per user; images at `/files/*` are public.
+- **Direct links** listed per user; images at `/files/*` are public. In the UI, each file shows a thumbnail (generated at upload); thumbnails are stored under `data/thumbnails` and served only to logged-in users at `/api/thumbnails/...`.
 - **Audit log**: all security-relevant actions (login, logout, user create/delete, file upload/delete, public file access, API key create/delete, password change) are written in [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html) format to a configurable file (default `./data/audit.json`).
+- **Optional APM**: when `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) is set, OpenTelemetry traces are sent via OTLP (e.g. to Elastic APM Server at `http://localhost:8200`) for request-level monitoring.
 - **SQLite** for users, sessions, API keys, and upload metadata (bcrypt for passwords). User IDs are random 63-bit integers (no predictable id=1 for the first user).
 
 ## Run
 
 ```bash
-go build -o pictago .
+make build
 ./pictago
 ```
+
+Or in one step: `make run` (builds and starts the server).
 
 Default: listen on `:8080`, data under `./data` (files in `./data/files`, DB at `./data/users.db`).
 
 **First run:** default user `admin` / `admin` is created. **Change this password immediately** via the UI (Password tab). Only images are accepted; max upload size is configurable via env.
+
+Other targets: `make test` (run tests), `make deps` (tidy modules), `make clean` (remove binary). Run `make help` for the full list.
 
 ### Env
 
@@ -36,6 +41,9 @@ Default: listen on `:8080`, data under `./data` (files in `./data/files`, DB at 
 | `DB_PATH`       | `$DATA_DIR/users.db`     | SQLite path                          |
 | `AUDIT_LOG_PATH`| `$DATA_DIR/audit.json`   | Audit log file (ECS JSON lines)      |
 | `MAX_UPLOAD_MB` | `10`                     | Max image size in MiB                |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | *(empty)*        | OTLP trace endpoint (e.g. `http://localhost:8200` for Elastic APM). If set, HTTP request tracing is enabled. |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | *(empty)* | Overrides trace endpoint if set (otherwise `OTEL_EXPORTER_OTLP_ENDPOINT` is used). |
+| `OTEL_SERVICE_NAME` | `pictago`                | Service name reported in traces.     |
 
 ## Routes
 

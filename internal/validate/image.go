@@ -3,14 +3,27 @@ package validate
 
 import "bytes"
 
-// Allowed image magic bytes (JPEG, PNG, GIF, WebP)
+// Image magic-byte constants (JPEG, PNG, GIF, WebP).
+const (
+	// JPEG: FF D8 FF
+	jpegMagic = "\xff\xd8\xff"
+	// PNG: 89 50 4E 47 0D 0A 1A 0A
+	pngMagic = "\x89PNG\r\n\x1a\n"
+	// GIF87a / GIF89a
+	gifMagic1 = "GIF87a"
+	gifMagic2 = "GIF89a"
+	// WebP: RIFF....WEBP
+	webpMagic = "RIFF"
+	webpFmt   = "WEBP"
+)
+
 var (
-	jpegPrefix = []byte{0xFF, 0xD8, 0xFF}
-	pngPrefix  = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-	gifPrefix  = []byte("GIF87a")
-	gifPrefix2 = []byte("GIF89a")
-	webpPrefix = []byte("RIFF") // WebP: RIFF....WEBP
-	webpFmt    = []byte("WEBP")
+	jpegPrefix = []byte(jpegMagic)
+	pngPrefix  = []byte(pngMagic)
+	gifPrefix  = []byte(gifMagic1)
+	gifPrefix2 = []byte(gifMagic2)
+	webpPrefix = []byte(webpMagic)
+	webpFmtB   = []byte(webpFmt)
 )
 
 // IsImage returns true if data has a valid image magic header (JPEG, PNG, GIF, WebP).
@@ -27,7 +40,7 @@ func IsImage(data []byte) bool {
 	if bytes.HasPrefix(data, gifPrefix) || bytes.HasPrefix(data, gifPrefix2) {
 		return true
 	}
-	if len(data) >= 12 && bytes.Equal(data[0:4], webpPrefix) && bytes.Equal(data[8:12], webpFmt) {
+	if len(data) >= 12 && bytes.Equal(data[0:4], webpPrefix) && bytes.Equal(data[8:12], webpFmtB) {
 		return true
 	}
 	return false
