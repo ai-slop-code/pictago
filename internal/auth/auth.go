@@ -103,6 +103,11 @@ func NewStore(dbPath string) (Store, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
+	// Tune for better throughput and read performance (ignore errors on read-only or restricted envs)
+	_, _ = db.Exec("PRAGMA journal_mode=WAL")
+	_, _ = db.Exec("PRAGMA synchronous=NORMAL")
+	_, _ = db.Exec("PRAGMA cache_size=-64000")   // 64 MiB page cache
+	_, _ = db.Exec("PRAGMA busy_timeout=5000")    // 5s wait on locked DB
 	s := &store{db: db}
 	if err := s.migrate(); err != nil {
 		return nil, err

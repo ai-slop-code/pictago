@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -92,9 +93,17 @@ func main() {
 	}
 	log.Printf("listening on %s (max upload %d MiB)", addr, maxUploadMB)
 
-	handler := middleware.ClientIP(server.Routes())
+	handler := middleware.ClientIP(middleware.Gzip(server.Routes()))
 	handler = otelhttp.NewHandler(handler, otelServiceName)
-	if err := http.ListenAndServe(addr, handler); err != nil {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second, // allow slow uploads (e.g. 10 MB)
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

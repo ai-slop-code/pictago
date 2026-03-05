@@ -29,7 +29,7 @@ Default: listen on `:8080`, data under `./data` (files in `./data/files`, DB at 
 
 **First run:** default user `admin` / `admin` is created. **Change this password immediately** via the UI (Password tab). Only images are accepted; max upload size is configurable via env.
 
-Other targets: `make test` (run tests), `make deps` (tidy modules), `make clean` (remove binary). Run `make help` for the full list.
+Other targets: `make build-release` (smaller binary, strip symbols), `make test`, `make deps`, `make clean`. Run `make help` for the full list.
 
 ### Env
 
@@ -91,6 +91,13 @@ Other targets: `make test` (run tests), `make deps` (tidy modules), `make clean`
 - **API keys**: create keys (optional name); copy the key once. Revoke keys from the list.
 - **Password**: change your password.
 - **Log out**: link in the header; clears session and redirects to login.
+
+## Performance and size
+
+- **Smaller binary**: `make build-release` builds with `-ldflags="-s -w"` and `-trimpath` (typically ~30% smaller than `make build`).
+- **HTTP**: Server uses read/write/idle timeouts to limit resource use; JSON and HTML responses are gzip-compressed when the client sends `Accept-Encoding: gzip`.
+- **SQLite**: WAL mode, 64 MiB cache, and `busy_timeout` are set for better throughput.
+- **Images**: Resize and thumbnails use `golang.org/x/image/draw` (ApproxBiLinear) for faster scaling than pixel-by-pixel.
 
 ## Security
 

@@ -12,6 +12,7 @@ import (
 	_ "image/gif"
 	_ "image/png"
 
+	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 )
 
@@ -64,19 +65,8 @@ func resize(src image.Image, w, h, max int) image.Image {
 		newH = 1
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	for y := 0; y < newH; y++ {
-		for x := 0; x < newW; x++ {
-			sx := int(float64(x) / scale)
-			sy := int(float64(y) / scale)
-			if sx >= w {
-				sx = w - 1
-			}
-			if sy >= h {
-				sy = h - 1
-			}
-			dst.Set(x, y, src.At(sx, sy))
-		}
-	}
+	// ApproxBiLinear is faster than pixel-by-pixel and scales well for downscaling.
+	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), src, src.Bounds(), draw.Over, nil)
 	return dst
 }
 
