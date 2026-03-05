@@ -46,8 +46,7 @@ func (s *Server) apiKeysHandler() http.HandlerFunc {
 				http.Error(w, "failed to list keys", http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(keys)
+			writeJSON(w, http.StatusOK, keys)
 			return
 		case http.MethodPost:
 			ctx, span := otel.Tracer("pictago").Start(r.Context(), "apikeys.create")
@@ -67,9 +66,7 @@ func (s *Server) apiKeysHandler() http.HandlerFunc {
 				return
 			}
 			logKeyCreated(username, keyName, "success", http.StatusCreated, r)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(map[string]string{"key": key, "message": "Copy the key now; it will not be shown again."})
+			writeJSON(w, http.StatusCreated, map[string]string{"key": key, "message": "Copy the key now; it will not be shown again."})
 			return
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

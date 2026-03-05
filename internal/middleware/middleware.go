@@ -4,8 +4,10 @@ import (
 	"compress/gzip"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"pictago/internal/requestctx"
 )
@@ -36,14 +38,20 @@ func RequestID(next http.Handler) http.Handler {
 		id := r.Header.Get("X-Request-ID")
 		if id == "" {
 			b := make([]byte, 8)
-			if _, _ = rand.Read(b); true {
+			if _, err := rand.Read(b); err == nil {
 				id = hex.EncodeToString(b)
+			} else {
+				id = requestIDFallback()
 			}
 		}
 		w.Header().Set("X-Request-ID", id)
 		ctx := requestctx.WithRequestID(r.Context(), id)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func requestIDFallback() string {
+	return fmt.Sprintf("%016x", time.Now().UnixNano())
 }
 
 // gzipResponseWriter wraps the response and compresses with gzip when appropriate.

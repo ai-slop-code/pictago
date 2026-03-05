@@ -23,6 +23,7 @@ type store struct {
 	root string
 }
 
+// New creates a Store that uses root as the filesystem directory for uploads.
 func New(root string) (Store, error) {
 	if err := os.MkdirAll(root, 0755); err != nil {
 		return nil, err

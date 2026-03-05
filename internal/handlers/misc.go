@@ -17,6 +17,15 @@ import (
 	"pictago/internal/auth"
 )
 
+// writeJSON sets Content-Type, writes status code, and encodes v as JSON. Logs and does not call WriteHeader again on encode error.
+func writeJSON(w http.ResponseWriter, code int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("writeJSON: %v", err)
+	}
+}
+
 // healthHandler returns 200 for liveness (process is up).
 func (s *Server) healthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +33,7 @@ func (s *Server) healthHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	}
 }
 
@@ -40,14 +47,10 @@ func (s *Server) readyHandler() http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		if err := s.Auth.Ping(ctx); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"status":"not ready","reason":"store unreachable"}`))
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not ready", "reason": "store unreachable"})
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ready"}`))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	}
 }
 
@@ -62,8 +65,7 @@ func (s *Server) versionHandler() http.HandlerFunc {
 		if version == "" {
 			version = "dev"
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"version": version})
+		writeJSON(w, http.StatusOK, map[string]string{"version": version})
 	}
 }
 
@@ -71,8 +73,7 @@ func (s *Server) configHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, span := otel.Tracer("pictago").Start(r.Context(), "config")
 		defer span.End()
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"max_upload_bytes": s.MaxUploadBytes,
 			"max_upload_mb":    s.MaxUploadBytes >> 20,
 		})
@@ -104,8 +105,7 @@ func (s *Server) statsHandler() http.HandlerFunc {
 			http.Error(w, "failed to get stats", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(st)
+		writeJSON(w, http.StatusOK, st)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -567,7 +568,9 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 			if strings.Contains(accept, "application/json") || strings.HasPrefix(r.URL.Path, "/api/") {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"error":"authorization required"}`))
+				if _, err := w.Write([]byte(`{"error":"authorization required"}`)); err != nil {
+					log.Printf("auth middleware: write error response: %v", err)
+				}
 				return
 			}
 			http.Redirect(w, r, "/login", http.StatusFound)

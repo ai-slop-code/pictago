@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -54,8 +55,7 @@ func (s *Server) usersHandler() http.HandlerFunc {
 				http.Error(w, "failed to list users", http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(list)
+			writeJSON(w, http.StatusOK, list)
 			return
 		case http.MethodPost:
 			ctx, span := otel.Tracer("pictago").Start(r.Context(), "users.create")
@@ -156,8 +156,7 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 				http.Error(w, "failed to get stats", http.StatusInternalServerError)
 				return
 			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(st)
+			writeJSON(w, http.StatusOK, st)
 			return
 		case len(parts) >= 3 && parts[1] == "collections":
 			ctx, span := otel.Tracer("pictago").Start(r.Context(), "users.collection.delete")
@@ -185,14 +184,20 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 				return
 			}
 			for _, p := range paths {
-				_ = s.Files.Delete(p)
+				if err := s.Files.Delete(p); err != nil {
+					log.Printf("users.collection.delete: delete file %s: %v", p, err)
+				}
 				if s.ThumbDir != "" {
-					_ = os.Remove(filepath.Join(s.ThumbDir, p))
+					if err := os.Remove(filepath.Join(s.ThumbDir, p)); err != nil && !os.IsNotExist(err) {
+						log.Printf("users.collection.delete: delete thumbnail %s: %v", p, err)
+					}
 				}
 			}
 			if len(paths) > 0 {
 				dir := filepath.Dir(paths[0])
-				_ = s.Files.DeleteDirectory(dir)
+				if err := s.Files.DeleteDirectory(dir); err != nil {
+					log.Printf("users.collection.delete: delete directory %s: %v", dir, err)
+				}
 			}
 			s.Audit.Log(audit.BuildEvent(audit.EventOpts{
 				Action: "collection-deleted", Category: []string{"file", "iam"}, Type: []string{"deletion", "access"},
@@ -227,8 +232,7 @@ func (s *Server) meHandler() http.HandlerFunc {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"username": username})
+		writeJSON(w, http.StatusOK, map[string]string{"username": username})
 	}
 }
 

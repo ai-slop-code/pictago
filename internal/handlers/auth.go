@@ -39,18 +39,14 @@ func (s *Server) loginHandler() http.HandlerFunc {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Username == "" || body.Password == "" {
 			span.SetStatus(codes.Error, "bad request")
 			logLogin(body.Username, "failure", http.StatusBadRequest, r)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "username and password required"})
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "username and password required"})
 			return
 		}
 		valid, err := s.Auth.ValidateUser(r.Context(), body.Username, body.Password)
 		if err != nil || !valid {
 			span.SetStatus(codes.Error, "invalid credentials")
 			logLogin(body.Username, "failure", http.StatusUnauthorized, r)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid credentials"})
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 			return
 		}
 		userID, err := s.Auth.GetUserID(r.Context(), body.Username)
@@ -78,8 +74,7 @@ func (s *Server) loginHandler() http.HandlerFunc {
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		})
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"username": body.Username})
+		writeJSON(w, http.StatusOK, map[string]string{"username": body.Username})
 	}
 }
 
@@ -99,7 +94,9 @@ func (s *Server) logoutHandler() http.HandlerFunc {
 			}
 		}
 		if cookie, _ := r.Cookie(auth.SessionCookieName()); cookie != nil && cookie.Value != "" {
-			_ = s.Auth.DeleteSession(r.Context(), cookie.Value)
+			if err := s.Auth.DeleteSession(r.Context(), cookie.Value); err != nil {
+				log.Printf("logout: delete session: %v", err)
+			}
 		}
 		if username != "" {
 			s.Audit.Log(audit.BuildEvent(audit.EventOpts{

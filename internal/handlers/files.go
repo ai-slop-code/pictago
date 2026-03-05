@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -135,15 +135,16 @@ func (s *Server) uploadHandler() http.HandlerFunc {
 		if s.ThumbDir != "" {
 			if thumb, err := optimize.Thumbnail(outData, 200); err == nil {
 				thumbPath := filepath.Join(s.ThumbDir, relativePath)
-				_ = os.MkdirAll(filepath.Dir(thumbPath), 0755)
-				_ = os.WriteFile(thumbPath, thumb, 0644)
+				if err := os.MkdirAll(filepath.Dir(thumbPath), 0755); err != nil {
+					log.Printf("thumbnail: mkdir %s: %v", filepath.Dir(thumbPath), err)
+				} else if err := os.WriteFile(thumbPath, thumb, 0644); err != nil {
+					log.Printf("thumbnail: write %s: %v", thumbPath, err)
+				}
 			}
 		}
 		fullPath := "/files/" + relativePath
 		logUpload(username, fullPath, int64(len(outData)), "success", http.StatusCreated, r)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]string{"path": fullPath})
+		writeJSON(w, http.StatusCreated, map[string]string{"path": fullPath})
 	}
 }
 
@@ -193,8 +194,7 @@ func (s *Server) listHandler() http.HandlerFunc {
 				ThumbnailURL: thumbURL,
 			})
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(out)
+		writeJSON(w, http.StatusOK, out)
 	}
 }
 
@@ -322,9 +322,13 @@ func (s *Server) deleteFileHandler() http.HandlerFunc {
 			http.Error(w, "failed to delete", http.StatusInternalServerError)
 			return
 		}
-		_ = s.Files.Delete(relativePath)
+		if err := s.Files.Delete(relativePath); err != nil {
+			log.Printf("files.delete: remove file %s: %v", relativePath, err)
+		}
 		if s.ThumbDir != "" {
-			_ = os.Remove(filepath.Join(s.ThumbDir, relativePath))
+			if err := os.Remove(filepath.Join(s.ThumbDir, relativePath)); err != nil && !os.IsNotExist(err) {
+				log.Printf("files.delete: remove thumbnail %s: %v", relativePath, err)
+			}
 		}
 		logDelete(username, "/files/"+relativePath, "success", http.StatusNoContent, r)
 		w.WriteHeader(http.StatusNoContent)
