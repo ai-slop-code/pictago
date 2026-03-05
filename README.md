@@ -18,6 +18,8 @@
 
 ## Run
 
+Requires **Go 1.21+** (see `go.mod`).
+
 ```bash
 make build
 ./pictago
@@ -29,7 +31,11 @@ Default: listen on `:8080`, data under `./data` (files in `./data/files`, DB at 
 
 **First run:** default user `admin` / `admin` is created. **Change this password immediately** via the UI (Password tab). Only images are accepted; max upload size is configurable via env.
 
-Other targets: `make build-release` (smaller binary, strip symbols), `make test`, `make deps`, `make clean`. Run `make help` for the full list.
+Other targets: `make build-release` (smaller binary, strip symbols), `make test`, `make fmt` (format code), `make vet`, `make lint` (golangci-lint), `make deps`, `make clean`. Run `make help` for the full list.
+
+### Development
+
+Before committing, run `make fmt` and `make test`. Optionally run `make lint` and `make vulncheck`. Coverage: `make cover` (writes `coverage.out`). CI runs tests, lint, vulnerability check (govulncheck), and build on push/PR; coverage is uploaded to Codecov (optional, add `CODECOV_TOKEN` for private repos). See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ### Env
 
@@ -44,11 +50,15 @@ Other targets: `make build-release` (smaller binary, strip symbols), `make test`
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | *(empty)*        | OTLP trace endpoint (e.g. `http://localhost:8200` for Elastic APM). If set, HTTP request tracing is enabled. |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | *(empty)* | Overrides trace endpoint if set (otherwise `OTEL_EXPORTER_OTLP_ENDPOINT` is used). |
 | `OTEL_SERVICE_NAME` | `pictago`                | Service name reported in traces.     |
+| `VERSION`           | *(from build or empty)*  | Override version shown in `/version` (default from `-ldflags` or `dev`). |
 
 ## Routes
 
 | Path        | Description                    |
 |-------------|--------------------------------|
+| `/health`   | Liveness: `GET` → `200 {"status":"ok"}` (no auth) |
+| `/ready`    | Readiness: `GET` → `200` if DB reachable, else `503` (no auth) |
+| `/version`  | Build version: `GET` → `{"version":"..."}` (no auth) |
 | `/`         | 404 (not found)                |
 | `/login`    | Login page                     |
 | `/logout`   | Log out, redirect to `/login`  |
@@ -98,6 +108,14 @@ Other targets: `make build-release` (smaller binary, strip symbols), `make test`
 - **HTTP**: Server uses read/write/idle timeouts to limit resource use; JSON and HTML responses are gzip-compressed when the client sends `Accept-Encoding: gzip`.
 - **SQLite**: WAL mode, 64 MiB cache, and `busy_timeout` are set for better throughput.
 - **Images**: Resize and thumbnails use `golang.org/x/image/draw` (ApproxBiLinear) for faster scaling than pixel-by-pixel.
+
+## Enterprise and production
+
+- **Graceful shutdown**: On SIGTERM/SIGINT the server stops accepting new connections, drains in-flight requests (up to 15s), then exits. Use this in containers and orchestrators.
+- **Health probes**: Use `GET /health` for liveness and `GET /ready` for readiness (checks DB). Point Kubernetes (or similar) liveness/readiness at these; no auth required.
+- **Request IDs**: Every response includes `X-Request-ID` (generated or forwarded from `X-Request-ID` request header). Use for logging and tracing across services.
+- **Version**: `GET /version` returns `{"version":"..."}`. Set at build time: `make build-release VERSION=0.1.0` or set env `VERSION` at runtime.
+- **Deployment**: Run behind a reverse proxy (nginx, Caddy, or cloud LB) for TLS and optional rate limiting. See [SECURITY.md](SECURITY.md).
 
 ## Security
 

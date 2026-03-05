@@ -123,7 +123,7 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 					Action: "user-deleted", Category: []string{"iam"}, Type: []string{"deletion", "user"},
 					Outcome: "failure", Message: "user deleted failure: id=" + parts[0],
 					User: &audit.UserFields{Name: actor, Target: &audit.UserFields{ID: parts[0]}},
-					URL: requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
+					URL:  requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
 					StatusCode: http.StatusInternalServerError, Method: r.Method,
 					Extra: map[string]interface{}{"pictago.target_user_id": userID},
 				}))
@@ -134,7 +134,7 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 				Action: "user-deleted", Category: []string{"iam"}, Type: []string{"deletion", "user"},
 				Outcome: "success", Message: "user deleted success: id=" + parts[0],
 				User: &audit.UserFields{Name: actor, Target: &audit.UserFields{ID: parts[0]}},
-				URL: requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
+				URL:  requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
 				StatusCode: http.StatusNoContent, Method: r.Method,
 				Extra: map[string]interface{}{"pictago.target_user_id": userID},
 			}))
@@ -177,7 +177,7 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 					Action: "collection-deleted", Category: []string{"file", "iam"}, Type: []string{"deletion", "access"},
 					Outcome: "failure", Message: "collection deleted failure: " + collectionName,
 					User: &audit.UserFields{Name: actor, Target: &audit.UserFields{ID: parts[0]}},
-					URL: requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
+					URL:  requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
 					StatusCode: http.StatusInternalServerError, Method: r.Method,
 					Extra: map[string]interface{}{"pictago.target_user_id": userID, "pictago.collection": collectionName},
 				}))
@@ -198,7 +198,7 @@ func (s *Server) adminUserByIDHandler() http.HandlerFunc {
 				Action: "collection-deleted", Category: []string{"file", "iam"}, Type: []string{"deletion", "access"},
 				Outcome: "success", Message: "collection deleted success: " + collectionName,
 				User: &audit.UserFields{Name: actor, Target: &audit.UserFields{ID: parts[0]}},
-				URL: requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
+				URL:  requestctx.RequestURL(r), ClientIP: requestctx.ClientIP(r.Context()),
 				StatusCode: http.StatusNoContent, Method: r.Method,
 				Extra: map[string]interface{}{"pictago.target_user_id": userID, "pictago.collection": collectionName},
 			}))

@@ -39,6 +39,19 @@ func TestStore_CreateUser_ValidateUser_GetUserID(t *testing.T) {
 	}
 }
 
+func TestStore_Ping(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	s, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.Ping(ctx); err != nil {
+		t.Errorf("Ping: %v", err)
+	}
+}
+
 func TestStore_CreateUser_duplicate(t *testing.T) {
 	ctx := context.Background()
 	dbPath := filepath.Join(t.TempDir(), "test.db")

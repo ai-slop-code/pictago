@@ -74,6 +74,41 @@ func TestGzip_noGzipWithoutAccept(t *testing.T) {
 	}
 }
 
+func TestRequestID_setsHeaderAndContext(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := requestctx.RequestID(r.Context())
+		if id == "" {
+			t.Error("RequestID empty in context")
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := RequestID(next)
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Header().Get("X-Request-ID") == "" {
+		t.Error("X-Request-ID response header not set")
+	}
+}
+
+func TestRequestID_usesIncoming(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := requestctx.RequestID(r.Context())
+		if id != "external-id-123" {
+			t.Errorf("RequestID = %q", id)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := RequestID(next)
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Request-ID", "external-id-123")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Header().Get("X-Request-ID") != "external-id-123" {
+		t.Errorf("X-Request-ID = %q", rec.Header().Get("X-Request-ID"))
+	}
+}
+
 func TestClientIP_setsContext(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := requestctx.ClientIP(r.Context())

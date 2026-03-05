@@ -52,6 +52,8 @@ type Store interface {
 	ListAPIKeys(ctx context.Context, userID int64) ([]APIKey, error)
 	DeleteAPIKey(ctx context.Context, keyID, userID int64) error
 	Close() error
+	// Ping checks connectivity to the store (e.g. for readiness probes).
+	Ping(ctx context.Context) error
 }
 
 var _ Store = (*store)(nil)
@@ -106,8 +108,8 @@ func NewStore(dbPath string) (Store, error) {
 	// Tune for better throughput and read performance (ignore errors on read-only or restricted envs)
 	_, _ = db.Exec("PRAGMA journal_mode=WAL")
 	_, _ = db.Exec("PRAGMA synchronous=NORMAL")
-	_, _ = db.Exec("PRAGMA cache_size=-64000")   // 64 MiB page cache
-	_, _ = db.Exec("PRAGMA busy_timeout=5000")    // 5s wait on locked DB
+	_, _ = db.Exec("PRAGMA cache_size=-64000") // 64 MiB page cache
+	_, _ = db.Exec("PRAGMA busy_timeout=5000") // 5s wait on locked DB
 	s := &store{db: db}
 	if err := s.migrate(); err != nil {
 		return nil, err
@@ -252,6 +254,10 @@ func (s *store) ValidateUser(ctx context.Context, username, password string) (bo
 
 func (s *store) Close() error {
 	return s.db.Close()
+}
+
+func (s *store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 func (s *store) GetUserID(ctx context.Context, username string) (int64, error) {

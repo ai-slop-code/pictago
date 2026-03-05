@@ -19,10 +19,10 @@ func TestWithClientIP_ClientIP(t *testing.T) {
 
 func TestClientIPFromRequest(t *testing.T) {
 	tests := []struct {
-		name     string
-		header   string
-		remote   string
-		wantIP   string
+		name   string
+		header string
+		remote string
+		wantIP string
 	}{
 		{"no header uses RemoteAddr", "", "1.2.3.4:5678", "1.2.3.4:5678"},
 		{"X-Forwarded-For single", "10.0.0.1", "", "10.0.0.1"},
@@ -41,6 +41,17 @@ func TestClientIPFromRequest(t *testing.T) {
 				t.Errorf("ClientIPFromRequest() = %q, want %q", got, tt.wantIP)
 			}
 		})
+	}
+}
+
+func TestWithRequestID_RequestID(t *testing.T) {
+	ctx := context.Background()
+	if got := RequestID(ctx); got != "" {
+		t.Errorf("RequestID(empty) = %q", got)
+	}
+	ctx = WithRequestID(ctx, "req-abc")
+	if got := RequestID(ctx); got != "req-abc" {
+		t.Errorf("RequestID = %q", got)
 	}
 }
 

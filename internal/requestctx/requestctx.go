@@ -9,7 +9,10 @@ import (
 
 type contextKey string
 
-const keyClientIP contextKey = "client_ip"
+const (
+	keyClientIP  contextKey = "client_ip"
+	keyRequestID contextKey = "request_id"
+)
 
 // WithClientIP returns a context with the client IP set. Middleware should call this.
 func WithClientIP(ctx context.Context, ip string) context.Context {
@@ -32,6 +35,17 @@ func ClientIPFromRequest(r *http.Request) string {
 		return strings.TrimSpace(x)
 	}
 	return r.RemoteAddr
+}
+
+// WithRequestID returns a context with the request ID set.
+func WithRequestID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, keyRequestID, id)
+}
+
+// RequestID returns the request ID from the context, or empty string if not set.
+func RequestID(ctx context.Context) string {
+	v, _ := ctx.Value(keyRequestID).(string)
+	return v
 }
 
 // RequestURL returns the full request URL as a string (scheme + host + path).

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"compress/gzip"
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 
@@ -24,6 +26,22 @@ func SecurityHeaders(next http.Handler, forUI bool) http.Handler {
 func ClientIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := requestctx.WithClientIP(r.Context(), requestctx.ClientIPFromRequest(r))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequestID sets or generates a request ID, adds it to context and to the response header X-Request-ID.
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Request-ID")
+		if id == "" {
+			b := make([]byte, 8)
+			if _, _ = rand.Read(b); true {
+				id = hex.EncodeToString(b)
+			}
+		}
+		w.Header().Set("X-Request-ID", id)
+		ctx := requestctx.WithRequestID(r.Context(), id)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

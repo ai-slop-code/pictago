@@ -14,12 +14,13 @@ import (
 
 // Server holds dependencies and exposes Routes() and EnsureUser().
 type Server struct {
-	Auth            auth.Store
-	Files           storage.Store
-	Audit           audit.Logger
-	MaxUploadBytes  int64
-	ThumbDir        string // directory for thumbnails (e.g. data/thumbnails); empty disables thumbnails
-	UI              fs.FS
+	Auth           auth.Store
+	Files          storage.Store
+	Audit          audit.Logger
+	MaxUploadBytes int64
+	ThumbDir       string // directory for thumbnails (e.g. data/thumbnails); empty disables thumbnails
+	UI             fs.FS
+	Version        string // build version (e.g. from -ldflags), empty means "dev"
 }
 
 // NewServer returns a new Server with the given dependencies.
@@ -31,6 +32,7 @@ func NewServer(authStore auth.Store, fileStore storage.Store, auditLog audit.Log
 		MaxUploadBytes: maxUploadBytes,
 		ThumbDir:       thumbDir,
 		UI:             ui,
+		Version:        "dev",
 	}
 }
 
@@ -53,6 +55,11 @@ func (s *Server) EnsureUser() {
 // Routes returns the root http.Handler with all routes registered.
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
+
+	// Operational endpoints (no auth)
+	mux.HandleFunc("/health", s.healthHandler())
+	mux.HandleFunc("/ready", s.readyHandler())
+	mux.HandleFunc("/version", s.versionHandler())
 
 	filesPrefix := "/files/"
 	fileServer := http.StripPrefix(filesPrefix, http.FileServer(http.Dir(s.Files.Root())))

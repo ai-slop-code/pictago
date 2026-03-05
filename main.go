@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -20,6 +22,9 @@ import (
 	"pictago/internal/storage"
 	"pictago/internal/telemetry"
 )
+
+// version is set at build time via -ldflags "-X main.version=..."
+var version string
 
 //go:embed ui
 var embedUI embed.FS
@@ -78,6 +83,11 @@ func main() {
 	}
 
 	server := handlers.NewServer(authStore, fileStore, auditLog, maxUploadBytes, thumbDir, uiFS)
+	if v := config.GetEnv("VERSION", version); v != "" {
+		server.Version = v
+	} else {
+		server.Version = "dev"
+	}
 	server.EnsureUser()
 
 	addr := config.GetEnv("ADDR", ":8080")
@@ -93,7 +103,7 @@ func main() {
 	}
 	log.Printf("listening on %s (max upload %d MiB)", addr, maxUploadMB)
 
-	handler := middleware.ClientIP(middleware.Gzip(server.Routes()))
+	handler := middleware.RequestID(middleware.ClientIP(middleware.Gzip(server.Routes())))
 	handler = otelhttp.NewHandler(handler, otelServiceName)
 	srv := &http.Server{
 		Addr:              addr,
@@ -103,7 +113,20 @@ func main() {
 		WriteTimeout:      60 * time.Second, // allow slow uploads (e.g. 10 MB)
 		IdleTimeout:       120 * time.Second,
 	}
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	log.Print("shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
 	}
+	log.Print("stopped")
 }

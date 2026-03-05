@@ -185,12 +185,12 @@ func (s *Server) listHandler() http.HandlerFunc {
 				thumbURL = "/api/thumbnails/" + relativePath
 			}
 			out = append(out, fileListEntry{
-				ID:            rec.ID,
-				Path:          rec.Path,
-				Size:          rec.Size,
-				Collection:    rec.Collection,
-				Filename:      rec.Filename,
-				ThumbnailURL:  thumbURL,
+				ID:           rec.ID,
+				Path:         rec.Path,
+				Size:         rec.Size,
+				Collection:   rec.Collection,
+				Filename:     rec.Filename,
+				ThumbnailURL: thumbURL,
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
