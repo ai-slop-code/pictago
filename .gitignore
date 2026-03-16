@@ -1,6 +1,9 @@
 # Build output
 /pictago
 *.exe
+*.test
+coverage.out
+coverage.html
 
 # Data and runtime (do not commit DB or uploads)
 /data/
