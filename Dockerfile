@@ -1,7 +1,7 @@
 ## Multi-stage Dockerfile for Pictago
 ##
 ## Build stage: compile static Linux binary with version support.
-FROM golang:1.22-alpine AS build
+FROM golang:1.24-alpine AS build
 
 WORKDIR /app
 
